@@ -1,15 +1,27 @@
+#========================================
+#shim for requestAnimFrame
+#========================================
 if window
     window.requestAnimFrame = (()->
         return window.requestAnimationFrame or window.webkitRequestAnimationFrame or window.mozRequestAnimationFrame or window.oRequestAnimationFrame or window.msRequestAnimationFrame or (callback)->
             window.setTimeout(callback, 1000 / 60)
     )()
 else
+    #Need to set window to some var for variable hoisting so `if window` doesn't
+    #blow up
     window = {}
 
 #========================================
+#
 #Class definition
+#
 #========================================
 class Game
+    #====================================
+    #
+    #Config
+    #
+    #====================================
     currentCellGeneration: null
     canvas: null
     drawingContext: null
@@ -17,21 +29,26 @@ class Game
     tickNum: 0
 
     #Configurable options
-    cellSize: 10
+    cellSize: 12
     numberOfRows: 50
     numberOfColumns: 50
     seedProbability: 0.4
     #Default - 23/3
-    ruleStayAlive: [2,3]
-    ruleBirth: [3]
+    rules: {
+        stayAlive: [2,3]
+        birth: [3]
+    }
     #if we should 'loop' the edges on itself (e.g., if the underlying topology
     #  is toroidal
     toroidal: true
+    showTrails: true
 
-    showTrails: false
-
-
-    constructor: ()->
+    #====================================
+    #
+    #Methods
+    #
+    #====================================
+    start: ()->
         @createCanvas()
         @resizeCanvas()
         @createDrawingContext()
@@ -112,7 +129,7 @@ class Game
                 fillStyle = 'rgb(100,200,100)'
         else
             if @showTrails
-                fillStyle = 'rgba(125,125,125,0.5)'
+                fillStyle = 'rgba(125,125,125,0.8)'
             else
                 fillStyle = 'rgb(125,125,125)'
         
@@ -146,10 +163,10 @@ class Game
         #if cell.isAlive or numAliveNeighbors is 3
         #    evolvedCell.isAlive = 1 < numAliveNeighbors < 4
         
-        if cell.isAlive and (@ruleStayAlive.indexOf(numAliveNeighbors) > -1)
+        if cell.isAlive and (@rules.stayAlive.indexOf(numAliveNeighbors) > -1)
             #If it's already alive, check to see if it should stay alive
             evolvedCell.isAlive = true
-        else if @ruleBirth.indexOf(numAliveNeighbors) > -1
+        else if @rules.birth.indexOf(numAliveNeighbors) > -1
             #If it wasn't alive, check for birth
             evolvedCell.isAlive = true
         else
@@ -225,6 +242,7 @@ class Game
 #========================================
 init = ()->
     game = new Game()
+    game.start()
 
 window.onload = init
 

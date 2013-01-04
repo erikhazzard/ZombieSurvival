@@ -6,6 +6,7 @@
         "underscore": "latest",
         "backbone": "latest",
         "mocha": "latest",
-        "chai": "latest"
+        "chai": "latest",
+        "uglify-js": "latest"
   }
 }

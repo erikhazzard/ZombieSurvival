@@ -13,6 +13,10 @@ if (window) {
 
 Game = (function() {
 
+  function Game() {
+    this.tick = __bind(this.tick, this);
+  }
+
   Game.prototype.currentCellGeneration = null;
 
   Game.prototype.canvas = null;
@@ -23,7 +27,7 @@ Game = (function() {
 
   Game.prototype.tickNum = 0;
 
-  Game.prototype.cellSize = 10;
+  Game.prototype.cellSize = 12;
 
   Game.prototype.numberOfRows = 50;
 
@@ -31,21 +35,22 @@ Game = (function() {
 
   Game.prototype.seedProbability = 0.4;
 
-  Game.prototype.ruleStayAlive = [2, 3];
-
-  Game.prototype.ruleBirth = [3];
+  Game.prototype.rules = {
+    stayAlive: [2, 3],
+    birth: [3]
+  };
 
   Game.prototype.toroidal = true;
 
-  Game.prototype.showTrails = false;
+  Game.prototype.showTrails = true;
 
-  function Game() {
-    this.tick = __bind(this.tick, this);    this.createCanvas();
+  Game.prototype.start = function() {
+    this.createCanvas();
     this.resizeCanvas();
     this.createDrawingContext();
     this.seed();
-    this.tick();
-  }
+    return this.tick();
+  };
 
   Game.prototype.createCanvas = function() {
     var _this = this;
@@ -141,7 +146,7 @@ Game = (function() {
       }
     } else {
       if (this.showTrails) {
-        fillStyle = 'rgba(125,125,125,0.5)';
+        fillStyle = 'rgba(125,125,125,0.8)';
       } else {
         fillStyle = 'rgb(125,125,125)';
       }
@@ -160,9 +165,9 @@ Game = (function() {
       isAlive: cell.isAlive
     };
     numAliveNeighbors = this.countAliveNeighbors(cell);
-    if (cell.isAlive && (this.ruleStayAlive.indexOf(numAliveNeighbors) > -1)) {
+    if (cell.isAlive && (this.rules.stayAlive.indexOf(numAliveNeighbors) > -1)) {
       evolvedCell.isAlive = true;
-    } else if (this.ruleBirth.indexOf(numAliveNeighbors) > -1) {
+    } else if (this.rules.birth.indexOf(numAliveNeighbors) > -1) {
       evolvedCell.isAlive = true;
     } else {
       evolvedCell.isAlive = false;
@@ -238,7 +243,8 @@ Game = (function() {
 
 init = function() {
   var game;
-  return game = new Game();
+  game = new Game();
+  return game.start();
 };
 
 window.onload = init;
