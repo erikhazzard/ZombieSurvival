@@ -1,59 +1,32 @@
-#========================================
-#shim for requestAnimFrame
-#========================================
-if window
-    window.requestAnimFrame = (()->
-        return window.requestAnimationFrame or window.webkitRequestAnimationFrame or window.mozRequestAnimationFrame or window.oRequestAnimationFrame or window.msRequestAnimationFrame or (callback)->
-            window.setTimeout(callback, 1000 / 60)
-    )()
-else
-    #Need to set window to some var for variable hoisting so `if window` doesn't
-    #blow up
-    window = {}
-
-#========================================
+# ===========================================================================
 #
-#Class definition
+# game - world view 
 #
-#========================================
-class Game
+# ===========================================================================
+class GAME.Views.World extends Backbone.View
     #====================================
     #
     #Config
     #
     #====================================
-    currentCellGeneration: null
-    canvas: null
-    drawingContext: null
-    tickLength: 100
-    tickNum: 0
-
-    #Configurable options
-    cellSize: 12
-    numberOfRows: 50
-    numberOfColumns: 50
-    seedProbability: 0.4
-    #Default - 23/3
-    rules: {
-        stayAlive: [2,3]
-        birth: [3]
-    }
-    #if we should 'loop' the edges on itself (e.g., if the underlying topology
-    #  is toroidal
-    toroidal: true
-    showTrails: true
 
     #====================================
     #
     #Methods
     #
     #====================================
-    start: ()->
+    initialize: ()->
+        #Properties we'll use later
+        @canvas = null
+        return @
+
+    render: ()->
         @createCanvas()
         @resizeCanvas()
         @createDrawingContext()
         @seed()
         @tick()
+        return @
 
     #Setup canvas
     createCanvas: ()->
@@ -64,64 +37,76 @@ class Game
             x = e.x - @canvas.offsetLeft
             y = e.y - @canvas.offsetTop
             #Get the row / column the user clicked on
-            cellColumn = Math.round(Math.floor(x / @cellSize))
-            cellRow = Math.round(Math.floor(y / @cellSize))
+            cellColumn = Math.round(Math.floor(x / @model.get('cellSize')))
+            cellRow = Math.round(Math.floor(y / @model.get('cellSize')))
+            currentCellGeneration = @model.get('currentCellGeneration')
             
             #Make that cell alive
-            @currentCellGeneration[cellRow][cellColumn].isAlive = true
+            currentCellGeneration[cellRow][cellColumn].isAlive = true
 
             #Get cells around current cell
             lowerRowBound = Math.max(cellRow - 1, 0)
-            upperRowBound = Math.min(cellRow + 1, @numberOfRows - 1)
+            upperRowBound = Math.min(cellRow + 1, @model.get('numberOfRows') - 1)
             lowerColumnBound = Math.max(cellColumn - 1, 0)
-            upperColumnBound = Math.min(cellColumn + 1, @numberOfColumns - 1)
+            upperColumnBound = Math.min(cellColumn + 1, @model.get('numberOfColumns') - 1)
 
             #Set cells status to alive
             for row in [lowerRowBound..upperRowBound]
                 for column in [lowerColumnBound..upperColumnBound]
-                    @currentCellGeneration[row][column].isAlive = true
+                    currentCellGeneration[row][column].isAlive = true
  
         )
         document.body.appendChild(@canvas)
 
     resizeCanvas: ()->
-        @canvas.width = @cellSize * @numberOfColumns
-        @canvas.height = @cellSize * @numberOfRows
+        @canvas.width = @model.get('cellSize') * @model.get('numberOfColumns')
+        @canvas.height = @model.get('cellSize') * @model.get('numberOfRows')
 
     createDrawingContext: ()->
         @drawingContext = @canvas.getContext('2d')
 
     #Initialize world
     seed: ()->
-        @currentCellGeneration = []
-        for row in [0...@numberOfRows]
-            @currentCellGeneration[row] = []
-            for column in [0...@numberOfColumns]
+        currentCellGeneration = []
+        for row in [0...@model.get('numberOfRows')]
+            currentCellGeneration[row] = []
+            for column in [0...@model.get('numberOfColumns')]
                 seedCell = @createSeedCell(row, column)
-                @currentCellGeneration[row][column] = seedCell
+                currentCellGeneration[row][column] = seedCell
+        
+        #Update the model
+        @model.set('currentCellGeneration', currentCellGeneration)
         return @
 
     createSeedCell: (row, column)->
         return {
-            isAlive: Math.random() < @seedProbability
+            isAlive: Math.random() < @model.get('seedProbability')
             row: row
             column: column
         }
 
     tick: ()=>
+        #Tick function - called at every time interval to update
+        #  the world
+        requestAnimFrame(@tick)
         @drawGrid()
         @updateCurrentGeneration()
-        requestAnimFrame(@tick)
 
     #draw world
     drawGrid: ()->
-        for row in [0...@numberOfRows]
-            for column in [0...@numberOfColumns]
-                @drawCell(@currentCellGeneration[row][column])
+        for row in [0...@model.get('numberOfRows')]
+            for column in [0...@model.get('numberOfColumns')]
+                @drawCell(@model.get('currentCellGeneration')[row][column])
 
     drawCell: (cell)->
-        x = cell.column * @cellSize
-        y = cell.row * @cellSize
+        #Draws a cell with canvas
+
+        #Store local refs
+        cellSize = @model.get('cellSize')
+
+        #Calculate x / y, draw cells
+        x = cell.column * cellSize
+        y = cell.row * cellSize
         if cell.isAlive
             if @showTrails
                 fillStyle = 'rgba(100,200,100,0.7)'
@@ -135,10 +120,11 @@ class Game
         
         #@drawingContext.strokeStyle = 'rgba(0,50,100,0.5)'
         @drawingContext.strokeStyle = 'rgb(100,100,100)'
-        @drawingContext.strokeRect(x,y,@cellSize, @cellSize)
-
+        @drawingContext.strokeRect(x,y,cellSize, cellSize)
         @drawingContext.fillStyle = fillStyle
-        @drawingContext.fillRect(x,y,@cellSize,@cellSize)
+        @drawingContext.fillRect(x,y,cellSize,cellSize)
+
+        return @
 
     #------------------------------------
     #Evolve cell
@@ -163,10 +149,10 @@ class Game
         #if cell.isAlive or numAliveNeighbors is 3
         #    evolvedCell.isAlive = 1 < numAliveNeighbors < 4
         
-        if cell.isAlive and (@rules.stayAlive.indexOf(numAliveNeighbors) > -1)
+        if cell.isAlive and (@model.get('rules').stayAlive.indexOf(numAliveNeighbors) > -1)
             #If it's already alive, check to see if it should stay alive
             evolvedCell.isAlive = true
-        else if @rules.birth.indexOf(numAliveNeighbors) > -1
+        else if @model.get('rules').birth.indexOf(numAliveNeighbors) > -1
             #If it wasn't alive, check for birth
             evolvedCell.isAlive = true
         else
@@ -177,22 +163,26 @@ class Game
 
     updateCurrentGeneration: ()->
         newCellGeneration = {}
-        for row in [0...@numberOfRows]
+        for row in [0...@model.get('numberOfRows')]
             newCellGeneration[row] = []
-            for column in [0...@numberOfColumns]
-                evolvedCell = @evolveCell(@currentCellGeneration[row][column])
+            for column in [0...@model.get('numberOfColumns')]
+                evolvedCell = @evolveCell(@model.get('currentCellGeneration')[row][column])
                 newCellGeneration[row][column] = evolvedCell
 
-        @currentCellGeneration = newCellGeneration
+        @model.set('currentCellGeneration', newCellGeneration)
 
     countAliveNeighbors: (cell)->
-        #This function
+        #This function calculates neighbors. If toroidal is true, the world
+        #  will loop in on itself
+
+        numberOfRows = @model.get('numberOfRows')
+        numberOfColumns = @model.get('numberOfColumns')
 
         #Calculate the x,y if it's near the edges
         lowerRowBound = Math.max(cell.row - 1, 0)
-        upperRowBound = Math.min(cell.row + 1, @numberOfRows - 1)
+        upperRowBound = Math.min(cell.row + 1, numberOfRows - 1)
         lowerColumnBound = Math.max(cell.column - 1, 0)
-        upperColumnBound = Math.min(cell.column + 1, @numberOfColumns - 1)
+        upperColumnBound = Math.min(cell.column + 1, numberOfColumns - 1)
 
         numAliveNeighbors = 0
 
@@ -210,41 +200,31 @@ class Game
                     column = curColumn
                     #Wrap around map
                     if row < 0
-                        row = @numberOfRows - 1
-                    else if row > @numberOfRows
+                        row = numberOfRows - 1
+                    else if row > numberOfRows
                         row = 0
-                    else if row > (@numberOfRows - 1)
+                    else if row > (numberOfRows - 1)
                         row = 0
                     
                     if column < 0
-                        column = @numberOfColumns - 1
-                    else if column > @numberOfColumns
+                        column = numberOfColumns - 1
+                    else if column > numberOfColumns
                         column = 0
-                    else if column > (@numberOfColumns - 1)
+                    else if column > (numberOfColumns - 1)
                         column = 0
                     
-                    if @currentCellGeneration[row][column].isAlive
+                    #Found a neighbor
+                    if @model.get('currentCellGeneration')[row][column].isAlive
                         numAliveNeighbors += 1
+
         else
             #This is the simpler method, but it cuts off the edges
             for row in [lowerRowBound..upperRowBound]
                 for column in [lowerColumnBound..upperColumnBound]
                     #Skip itself
                     continue if row is cell.row and column is cell.column
-                    if @currentCellGeneration[row][column].isAlive
+                    if @model.get('currentCellGeneration')[row][column].isAlive
                         numAliveNeighbors += 1
 
 
         return numAliveNeighbors
-
-#========================================
-#init
-#========================================
-init = ()->
-    game = new Game()
-    game.start()
-
-window.onload = init
-
-root = exports ? window
-root.Game = Game

@@ -10,6 +10,42 @@ THIRD_PARTY = \
 	static/lib/jquery.js \
 	static/lib/backbone.js
 
+JS_TARGETS = \
+	static/coffee/copyright.txt \
+	static/js/namespace.js \
+	static/js/logger.js \
+	static/js/model-world.js \
+	static/js/view-world.js \
+	static/js/main.js
+
+# ---------------------------------------
+#  Make
+# ---------------------------------------
+all: coffee js
+
+#Coffee script
+coffee:
+	@echo "\n${HR}"
+	@echo "Compiling Coffeejs"
+	@echo "${HR}"
+	@coffee --compile --output static/js static/coffee
+	@echo "Compiled coffeejs...	${CHECK} Done\n"
+	@echo "${HR}"
+	@echo "\n${HR}"
+
+# ---------------------------------------
+# JS files
+# ---------------------------------------
+js:
+	@echo "\n${HR}"
+	@echo "${HR}\nRunning uglify\n${HR}"
+
+	@cat $(JS_TARGETS) > static/js/build/vasir.js
+	@./node_modules/uglify-js/bin/uglifyjs -nc static/js/build/vasir.js > static/js/build/vasir.min.js
+	@echo "Compiling Our Scripts ${CHECK} Done"
+	@echo "\n${HR}"
+	@echo "Files successfully built at ${DATE}."
+	@echo "${HR}\n"
 # ---------------------------------------
 # Third party file build step
 # ---------------------------------------

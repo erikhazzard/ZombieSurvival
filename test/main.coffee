@@ -1,10 +1,12 @@
 chai = require('chai')
 chai.should()
-{Game} = require('../src/main.js')
+{GAME} = require('../src/namespace.js')
+require('../src/model-world.js')
+require('../src/view-world.js')
 
 describe('Game instance', ()->
     it('should have starting params', ()->
-        game = new Game()
+        game = new GAME.Models.Game()
         
         #Test for params
         game.cellSize.should.not.equal(undefined)

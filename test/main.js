@@ -1,15 +1,19 @@
-var Game, chai;
+var GAME, chai;
 
 chai = require('chai');
 
 chai.should();
 
-Game = require('../src/main.js').Game;
+GAME = require('../src/namespace.js').GAME;
+
+require('../src/model-world.js');
+
+require('../src/view-world.js');
 
 describe('Game instance', function() {
   return it('should have starting params', function() {
     var game;
-    game = new Game();
+    game = new GAME.Models.Game();
     game.cellSize.should.not.equal(void 0);
     game.numberOfRows.should.not.equal(void 0);
     game.numberOfColumns.should.not.equal(void 0);
