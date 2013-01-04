@@ -1,21 +1,35 @@
-window.requestAnimFrame = (()->
-    return window.requestAnimationFrame or window.webkitRequestAnimationFrame or window.mozRequestAnimationFrame or window.oRequestAnimationFrame or window.msRequestAnimationFrame or (callback)->
-        window.setTimeout(callback, 1000 / 60)
-)()
+if window
+    window.requestAnimFrame = (()->
+        return window.requestAnimationFrame or window.webkitRequestAnimationFrame or window.mozRequestAnimationFrame or window.oRequestAnimationFrame or window.msRequestAnimationFrame or (callback)->
+            window.setTimeout(callback, 1000 / 60)
+    )()
+else
+    window = {}
 
 #========================================
 #Class definition
 #========================================
-class Conway
+class Game
     currentCellGeneration: null
-    cellSize: 10
-    numberOfRows: 40
-    numberOfColumns: 40
-    seedProbability: 0.1
-    tickLength: 100
     canvas: null
     drawingContext: null
+    tickLength: 100
     tickNum: 0
+
+    #Configurable options
+    cellSize: 10
+    numberOfRows: 50
+    numberOfColumns: 50
+    seedProbability: 0.4
+    #Default - 23/3
+    ruleStayAlive: [2,3]
+    ruleBirth: [3]
+    #if we should 'loop' the edges on itself (e.g., if the underlying topology
+    #  is toroidal
+    toroidal: true
+
+    showTrails: false
+
 
     constructor: ()->
         @createCanvas()
@@ -92,9 +106,15 @@ class Conway
         x = cell.column * @cellSize
         y = cell.row * @cellSize
         if cell.isAlive
-            fillStyle = 'rgba(100,200,100,0.7)'
+            if @showTrails
+                fillStyle = 'rgba(100,200,100,0.7)'
+            else
+                fillStyle = 'rgb(100,200,100)'
         else
-            fillStyle = 'rgba(125,125,125,0.5)'
+            if @showTrails
+                fillStyle = 'rgba(125,125,125,0.5)'
+            else
+                fillStyle = 'rgb(125,125,125)'
         
         #@drawingContext.strokeStyle = 'rgba(0,50,100,0.5)'
         @drawingContext.strokeStyle = 'rgb(100,100,100)'
@@ -115,41 +135,26 @@ class Conway
         }
         numAliveNeighbors = @countAliveNeighbors(cell)
 
-        ruleStayAlive = [2,3]
-        ruleBirth = [3]
-
         ##Based on its neighbors (and if it's alive already), implement
         ##  rules for birth and death
-        ##RULES (XY/Z rule) (first numbers are requiredments for staying alive, 
+        ##RULES (XY/Z rule) (first numbers are requirements for staying alive, 
         ##  second number is requirement for birth):
         ##  1. cell is born if it has exactly 3 living neighbors
         ##  2. stays alive (must already be alive) if it has 2 or 3 living neighbors
         ##  3. dies otherwise 
         #23/3
-        if cell.isAlive or numAliveNeighbors is 3
-            evolvedCell.isAlive = 1 < numAliveNeighbors < 4
-
-        #MAZE
-        #12345/3
         #if cell.isAlive or numAliveNeighbors is 3
-            #evolvedCell.isAlive = 0 < numAliveNeighbors < 5
-
-        ##16/6
-        #if cell.isAlive or numAliveNeighbors is 6
-            #if numAliveNeighbors == 1 or numAliveNeighbors == 6
-                #evolvedCell.isAlive = true
-            #else
-                #evolvedCell.isAlive = false
-                
-        ##23/36
-        #if cell.isAlive or numAliveNeighbors is 3
-            #evolvedCell.isAlive = 1 < numAliveNeighbors < 4
-        #if numAliveNeighbors is 6
-            #evolvedCell.isALive = true
+        #    evolvedCell.isAlive = 1 < numAliveNeighbors < 4
         
-        ##12/1 - generates similar to sierpinski triange
-        #if cell.isAlive or numAliveNeighbors is 1
-            #evolvedCell.isAlive = 1
+        if cell.isAlive and (@ruleStayAlive.indexOf(numAliveNeighbors) > -1)
+            #If it's already alive, check to see if it should stay alive
+            evolvedCell.isAlive = true
+        else if @ruleBirth.indexOf(numAliveNeighbors) > -1
+            #If it wasn't alive, check for birth
+            evolvedCell.isAlive = true
+        else
+            #The number of neighbors don't match the rule, so it's dead
+            evolvedCell.isAlive = false
 
         return evolvedCell
 
@@ -174,41 +179,43 @@ class Conway
 
         numAliveNeighbors = 0
 
-        ##This is the simpler method, but it cuts off the edges
-        #for row in [lowerRowBound..upperRowBound]
-            #for column in [lowerColumnBound..upperColumnBound]
-                ##Skip itself
-                #continue if row is cell.row and column is cell.column
-                #if @currentCellGeneration[row][column].isAlive
-                    #numAliveNeighbors += 1
-                    
-        rowBot = cell.row - 1
-        rowTop = cell.row + 1
-        colBot = cell.column - 1
-        colTop= cell.column + 1
-        for curRow in [rowBot..rowTop]
-            for curColumn in [colBot..colTop]
-                continue if curRow is cell.row and curColumn is cell.column
+        if @toroidal
+            #Loop edges on itself
+            rowBot = cell.row - 1
+            rowTop = cell.row + 1
+            colBot = cell.column - 1
+            colTop= cell.column + 1
+            for curRow in [rowBot..rowTop]
+                for curColumn in [colBot..colTop]
+                    continue if curRow is cell.row and curColumn is cell.column
 
-                row = curRow
-                column = curColumn
-                #Wrap around map
-                if row < 0
-                    row = @numberOfRows - 1
-                else if row > @numberOfRows
-                    row = 0
-                else if row > (@numberOfRows - 1)
-                    row = 0
-                
-                if column < 0
-                    column = @numberOfColumns - 1
-                else if column > @numberOfColumns
-                    column = 0
-                else if column > (@numberOfColumns - 1)
-                    column = 0
-                
-                if @currentCellGeneration[row][column].isAlive
-                    numAliveNeighbors += 1
+                    row = curRow
+                    column = curColumn
+                    #Wrap around map
+                    if row < 0
+                        row = @numberOfRows - 1
+                    else if row > @numberOfRows
+                        row = 0
+                    else if row > (@numberOfRows - 1)
+                        row = 0
+                    
+                    if column < 0
+                        column = @numberOfColumns - 1
+                    else if column > @numberOfColumns
+                        column = 0
+                    else if column > (@numberOfColumns - 1)
+                        column = 0
+                    
+                    if @currentCellGeneration[row][column].isAlive
+                        numAliveNeighbors += 1
+        else
+            #This is the simpler method, but it cuts off the edges
+            for row in [lowerRowBound..upperRowBound]
+                for column in [lowerColumnBound..upperColumnBound]
+                    #Skip itself
+                    continue if row is cell.row and column is cell.column
+                    if @currentCellGeneration[row][column].isAlive
+                        numAliveNeighbors += 1
 
 
         return numAliveNeighbors
@@ -217,6 +224,9 @@ class Conway
 #init
 #========================================
 init = ()->
-    game = new Conway()
+    game = new Game()
 
 window.onload = init
+
+root = exports ? window
+root.Game = Game

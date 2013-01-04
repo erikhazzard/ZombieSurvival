@@ -1,33 +1,45 @@
-var Conway, init,
+var Game, init, root, window,
   __bind = function(fn, me){ return function(){ return fn.apply(me, arguments); }; };
 
-window.requestAnimFrame = (function() {
-  return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || function(callback) {
-    return window.setTimeout(callback, 1000 / 60);
-  };
-})();
+if (window) {
+  window.requestAnimFrame = (function() {
+    return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || function(callback) {
+      return window.setTimeout(callback, 1000 / 60);
+    };
+  })();
+} else {
+  window = {};
+}
 
-Conway = (function() {
+Game = (function() {
 
-  Conway.prototype.currentCellGeneration = null;
+  Game.prototype.currentCellGeneration = null;
 
-  Conway.prototype.cellSize = 10;
+  Game.prototype.canvas = null;
 
-  Conway.prototype.numberOfRows = 40;
+  Game.prototype.drawingContext = null;
 
-  Conway.prototype.numberOfColumns = 40;
+  Game.prototype.tickLength = 100;
 
-  Conway.prototype.seedProbability = 0.1;
+  Game.prototype.tickNum = 0;
 
-  Conway.prototype.tickLength = 100;
+  Game.prototype.cellSize = 10;
 
-  Conway.prototype.canvas = null;
+  Game.prototype.numberOfRows = 50;
 
-  Conway.prototype.drawingContext = null;
+  Game.prototype.numberOfColumns = 50;
 
-  Conway.prototype.tickNum = 0;
+  Game.prototype.seedProbability = 0.4;
 
-  function Conway() {
+  Game.prototype.ruleStayAlive = [2, 3];
+
+  Game.prototype.ruleBirth = [3];
+
+  Game.prototype.toroidal = true;
+
+  Game.prototype.showTrails = false;
+
+  function Game() {
     this.tick = __bind(this.tick, this);    this.createCanvas();
     this.resizeCanvas();
     this.createDrawingContext();
@@ -35,7 +47,7 @@ Conway = (function() {
     this.tick();
   }
 
-  Conway.prototype.createCanvas = function() {
+  Game.prototype.createCanvas = function() {
     var _this = this;
     this.canvas = document.createElement('canvas');
     this.canvas.addEventListener('click', function(e) {
@@ -65,16 +77,16 @@ Conway = (function() {
     return document.body.appendChild(this.canvas);
   };
 
-  Conway.prototype.resizeCanvas = function() {
+  Game.prototype.resizeCanvas = function() {
     this.canvas.width = this.cellSize * this.numberOfColumns;
     return this.canvas.height = this.cellSize * this.numberOfRows;
   };
 
-  Conway.prototype.createDrawingContext = function() {
+  Game.prototype.createDrawingContext = function() {
     return this.drawingContext = this.canvas.getContext('2d');
   };
 
-  Conway.prototype.seed = function() {
+  Game.prototype.seed = function() {
     var column, row, seedCell, _ref, _ref2;
     this.currentCellGeneration = [];
     for (row = 0, _ref = this.numberOfRows; 0 <= _ref ? row < _ref : row > _ref; 0 <= _ref ? row++ : row--) {
@@ -87,7 +99,7 @@ Conway = (function() {
     return this;
   };
 
-  Conway.prototype.createSeedCell = function(row, column) {
+  Game.prototype.createSeedCell = function(row, column) {
     return {
       isAlive: Math.random() < this.seedProbability,
       row: row,
@@ -95,13 +107,13 @@ Conway = (function() {
     };
   };
 
-  Conway.prototype.tick = function() {
+  Game.prototype.tick = function() {
     this.drawGrid();
     this.updateCurrentGeneration();
     return requestAnimFrame(this.tick);
   };
 
-  Conway.prototype.drawGrid = function() {
+  Game.prototype.drawGrid = function() {
     var column, row, _ref, _results;
     _results = [];
     for (row = 0, _ref = this.numberOfRows; 0 <= _ref ? row < _ref : row > _ref; 0 <= _ref ? row++ : row--) {
@@ -117,14 +129,22 @@ Conway = (function() {
     return _results;
   };
 
-  Conway.prototype.drawCell = function(cell) {
+  Game.prototype.drawCell = function(cell) {
     var fillStyle, x, y;
     x = cell.column * this.cellSize;
     y = cell.row * this.cellSize;
     if (cell.isAlive) {
-      fillStyle = 'rgba(100,200,100,0.7)';
+      if (this.showTrails) {
+        fillStyle = 'rgba(100,200,100,0.7)';
+      } else {
+        fillStyle = 'rgb(100,200,100)';
+      }
     } else {
-      fillStyle = 'rgba(125,125,125,0.5)';
+      if (this.showTrails) {
+        fillStyle = 'rgba(125,125,125,0.5)';
+      } else {
+        fillStyle = 'rgb(125,125,125)';
+      }
     }
     this.drawingContext.strokeStyle = 'rgb(100,100,100)';
     this.drawingContext.strokeRect(x, y, this.cellSize, this.cellSize);
@@ -132,23 +152,25 @@ Conway = (function() {
     return this.drawingContext.fillRect(x, y, this.cellSize, this.cellSize);
   };
 
-  Conway.prototype.evolveCell = function(cell) {
-    var evolvedCell, numAliveNeighbors, ruleBirth, ruleStayAlive;
+  Game.prototype.evolveCell = function(cell) {
+    var evolvedCell, numAliveNeighbors;
     evolvedCell = {
       row: cell.row,
       column: cell.column,
       isAlive: cell.isAlive
     };
     numAliveNeighbors = this.countAliveNeighbors(cell);
-    ruleStayAlive = [2, 3];
-    ruleBirth = [3];
-    if (cell.isAlive || numAliveNeighbors === 3) {
-      evolvedCell.isAlive = (1 < numAliveNeighbors && numAliveNeighbors < 4);
+    if (cell.isAlive && (this.ruleStayAlive.indexOf(numAliveNeighbors) > -1)) {
+      evolvedCell.isAlive = true;
+    } else if (this.ruleBirth.indexOf(numAliveNeighbors) > -1) {
+      evolvedCell.isAlive = true;
+    } else {
+      evolvedCell.isAlive = false;
     }
     return evolvedCell;
   };
 
-  Conway.prototype.updateCurrentGeneration = function() {
+  Game.prototype.updateCurrentGeneration = function() {
     var column, evolvedCell, newCellGeneration, row, _ref, _ref2;
     newCellGeneration = {};
     for (row = 0, _ref = this.numberOfRows; 0 <= _ref ? row < _ref : row > _ref; 0 <= _ref ? row++ : row--) {
@@ -161,51 +183,66 @@ Conway = (function() {
     return this.currentCellGeneration = newCellGeneration;
   };
 
-  Conway.prototype.countAliveNeighbors = function(cell) {
+  Game.prototype.countAliveNeighbors = function(cell) {
     var colBot, colTop, column, curColumn, curRow, lowerColumnBound, lowerRowBound, numAliveNeighbors, row, rowBot, rowTop, upperColumnBound, upperRowBound;
     lowerRowBound = Math.max(cell.row - 1, 0);
     upperRowBound = Math.min(cell.row + 1, this.numberOfRows - 1);
     lowerColumnBound = Math.max(cell.column - 1, 0);
     upperColumnBound = Math.min(cell.column + 1, this.numberOfColumns - 1);
     numAliveNeighbors = 0;
-    rowBot = cell.row - 1;
-    rowTop = cell.row + 1;
-    colBot = cell.column - 1;
-    colTop = cell.column + 1;
-    for (curRow = rowBot; rowBot <= rowTop ? curRow <= rowTop : curRow >= rowTop; rowBot <= rowTop ? curRow++ : curRow--) {
-      for (curColumn = colBot; colBot <= colTop ? curColumn <= colTop : curColumn >= colTop; colBot <= colTop ? curColumn++ : curColumn--) {
-        if (curRow === cell.row && curColumn === cell.column) continue;
-        row = curRow;
-        column = curColumn;
-        if (row < 0) {
-          row = this.numberOfRows - 1;
-        } else if (row > this.numberOfRows) {
-          row = 0;
-        } else if (row > (this.numberOfRows - 1)) {
-          row = 0;
+    if (this.toroidal) {
+      rowBot = cell.row - 1;
+      rowTop = cell.row + 1;
+      colBot = cell.column - 1;
+      colTop = cell.column + 1;
+      for (curRow = rowBot; rowBot <= rowTop ? curRow <= rowTop : curRow >= rowTop; rowBot <= rowTop ? curRow++ : curRow--) {
+        for (curColumn = colBot; colBot <= colTop ? curColumn <= colTop : curColumn >= colTop; colBot <= colTop ? curColumn++ : curColumn--) {
+          if (curRow === cell.row && curColumn === cell.column) continue;
+          row = curRow;
+          column = curColumn;
+          if (row < 0) {
+            row = this.numberOfRows - 1;
+          } else if (row > this.numberOfRows) {
+            row = 0;
+          } else if (row > (this.numberOfRows - 1)) {
+            row = 0;
+          }
+          if (column < 0) {
+            column = this.numberOfColumns - 1;
+          } else if (column > this.numberOfColumns) {
+            column = 0;
+          } else if (column > (this.numberOfColumns - 1)) {
+            column = 0;
+          }
+          if (this.currentCellGeneration[row][column].isAlive) {
+            numAliveNeighbors += 1;
+          }
         }
-        if (column < 0) {
-          column = this.numberOfColumns - 1;
-        } else if (column > this.numberOfColumns) {
-          column = 0;
-        } else if (column > (this.numberOfColumns - 1)) {
-          column = 0;
-        }
-        if (this.currentCellGeneration[row][column].isAlive) {
-          numAliveNeighbors += 1;
+      }
+    } else {
+      for (row = lowerRowBound; lowerRowBound <= upperRowBound ? row <= upperRowBound : row >= upperRowBound; lowerRowBound <= upperRowBound ? row++ : row--) {
+        for (column = lowerColumnBound; lowerColumnBound <= upperColumnBound ? column <= upperColumnBound : column >= upperColumnBound; lowerColumnBound <= upperColumnBound ? column++ : column--) {
+          if (row === cell.row && column === cell.column) continue;
+          if (this.currentCellGeneration[row][column].isAlive) {
+            numAliveNeighbors += 1;
+          }
         }
       }
     }
     return numAliveNeighbors;
   };
 
-  return Conway;
+  return Game;
 
 })();
 
 init = function() {
   var game;
-  return game = new Conway();
+  return game = new Game();
 };
 
 window.onload = init;
+
+root = typeof exports !== "undefined" && exports !== null ? exports : window;
+
+root.Game = Game;
