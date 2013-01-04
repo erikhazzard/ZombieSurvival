@@ -149,19 +149,20 @@ GAME.LOGGER.options.setup_log_types()
 #----------------------------------------
 #Configure window.console.log
 #----------------------------------------
-#Set the window.console.log function to visually.log
-if window.console and GAME.LOGGER.options
-    #If log_errors is false, don't log errors
-    if GAME.LOGGER.options.log_level == 'none' or GAME.LOGGER.options.log_level is null
-        console.log = ()-> {}
+if window
+    #Set the window.console.log function to visually.log
+    if window.console and GAME.LOGGER.options
+        #If log_errors is false, don't log errors
+        if GAME.LOGGER.options.log_level == 'none' or GAME.LOGGER.options.log_level is null
+            console.log = ()-> {}
 
-#If window.console does not exist, create an empty log function
-if not window.console?
-    window.console = {
-        log: ()-> {}
-    }
+    #If window.console does not exist, create an empty log function
+    if not window.console?
+        window.console = {
+            log: ()-> {}
+        }
 
-#Catch and handle all general exceptions
-window.onerror = (msg, url, line)->
-    GAME.LOGGER.error(msg, url, line)
-    return false
+    #Catch and handle all general exceptions
+    window.onerror = (msg, url, line)->
+        GAME.LOGGER.error(msg, url, line)
+        return false

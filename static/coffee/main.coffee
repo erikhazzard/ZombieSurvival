@@ -1,28 +1,26 @@
 #========================================
-#shim for requestAnimFrame
+#Require Config (load additional libraries)
 #========================================
-if window
-    window.requestAnimFrame = (()->
-        return window.requestAnimationFrame or window.webkitRequestAnimationFrame or window.mozRequestAnimationFrame or window.oRequestAnimationFrame or window.msRequestAnimationFrame or (callback)->
-            window.setTimeout(callback, 1000 / 60)
-    )()
-else
-    #Need to set window to some var for variable hoisting so `if window` doesn't
-    #blow up
-    window = {}
+requirejs.config({
+    shim: {
+        'lib/backbone': {
+            #These script dependencies should be loaded before loading
+            #backbone.js
+            deps: ['lib/underscore', 'lib/jquery'],
+            #Once loaded, use the global 'Backbone' as the
+            #module value.
+            exports: 'Backbone'
+        }
+    }
+})
 
 #========================================
-#init
+#Set everything up
 #========================================
-init = ()->
-    game = new GAME.Models.World()
-    gameView = new GAME.Views.World({
+require(["jquery", "models/world", "views/world"], ($, worldModel, worldView)->
+    game = new worldModel()
+    gameView = new worldView({
         model: game
     })
-
     gameView.render()
-
-window.onload = init
-
-root = exports ? window
-root.GAME = GAME
+)

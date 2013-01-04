@@ -1,1 +1,3 @@
-Erik Hazzard | @enoex | http://vasir.net
+/*
+    Erik Hazzard | @enoex | http://vasir.net
+*/

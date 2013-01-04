@@ -12,10 +12,9 @@ THIRD_PARTY = \
 
 JS_TARGETS = \
 	static/coffee/copyright.txt \
-	static/js/namespace.js \
 	static/js/logger.js \
-	static/js/model-world.js \
-	static/js/view-world.js \
+	static/js/models/model-world.js \
+	static/js/views/view-world.js \
 	static/js/main.js
 
 # ---------------------------------------
@@ -29,6 +28,8 @@ coffee:
 	@echo "Compiling Coffeejs"
 	@echo "${HR}"
 	@coffee --compile --output static/js static/coffee
+	@coffee --compile --output static/js/views static/coffee/views
+	@coffee --compile --output static/js/models static/coffee/models
 	@echo "Compiled coffeejs...	${CHECK} Done\n"
 	@echo "${HR}"
 	@echo "\n${HR}"
@@ -40,8 +41,8 @@ js:
 	@echo "\n${HR}"
 	@echo "${HR}\nRunning uglify\n${HR}"
 
-	@cat $(JS_TARGETS) > static/js/build/vasir.js
-	@./node_modules/uglify-js/bin/uglifyjs -nc static/js/build/vasir.js > static/js/build/vasir.min.js
+	@cat $(JS_TARGETS) > static/js/build/game.js
+	@./node_modules/uglify-js/bin/uglifyjs -nc static/js/build/game.js > static/js/build/game.min.js
 	@echo "Compiling Our Scripts ${CHECK} Done"
 	@echo "\n${HR}"
 	@echo "Files successfully built at ${DATE}."
@@ -52,7 +53,7 @@ js:
 third:
 	@echo "${HR}\n"
 	@echo "Compiling Third Party JS"
-	@cat  $(THIRD_PARTY) > static/lib/all3rdjs.js
-	@./node_modules/uglify-js/bin/uglifyjs -nc static/lib/all3rdjs.js > static/lib/all3rdjs.min.js
+	@cat  $(THIRD_PARTY) > static/js/lib/all3rdjs.js
+	@./node_modules/uglify-js/bin/uglifyjs -nc static/js/lib/all3rdjs.js > static/js/lib/all3rdjs.min.js
 	@rm static/lib/all3rdjs.js
 	@echo "Third party files successfully built at ${DATE}."

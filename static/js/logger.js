@@ -68,25 +68,25 @@
 
   GAME.LOGGER.options.setup_log_types();
 
-  if (window.console && GAME.LOGGER.options) {
-    if (GAME.LOGGER.options.log_level === 'none' || GAME.LOGGER.options.log_level === null) {
-      console.log = function() {
-        return {};
+  if (window) {
+    if (window.console && GAME.LOGGER.options) {
+      if (GAME.LOGGER.options.log_level === 'none' || GAME.LOGGER.options.log_level === null) {
+        console.log = function() {
+          return {};
+        };
+      }
+    }
+    if (!(window.console != null)) {
+      window.console = {
+        log: function() {
+          return {};
+        }
       };
     }
-  }
-
-  if (!(window.console != null)) {
-    window.console = {
-      log: function() {
-        return {};
-      }
+    window.onerror = function(msg, url, line) {
+      GAME.LOGGER.error(msg, url, line);
+      return false;
     };
   }
-
-  window.onerror = function(msg, url, line) {
-    GAME.LOGGER.error(msg, url, line);
-    return false;
-  };
 
 }).call(this);
