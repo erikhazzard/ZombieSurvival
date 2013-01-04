@@ -17,7 +17,7 @@ Conway = (function() {
 
   Conway.prototype.numberOfColumns = 40;
 
-  Conway.prototype.seedProbability = 0.5;
+  Conway.prototype.seedProbability = 0.1;
 
   Conway.prototype.tickLength = 100;
 
@@ -133,13 +133,15 @@ Conway = (function() {
   };
 
   Conway.prototype.evolveCell = function(cell) {
-    var evolvedCell, numAliveNeighbors;
+    var evolvedCell, numAliveNeighbors, ruleBirth, ruleStayAlive;
     evolvedCell = {
       row: cell.row,
       column: cell.column,
       isAlive: cell.isAlive
     };
     numAliveNeighbors = this.countAliveNeighbors(cell);
+    ruleStayAlive = [2, 3];
+    ruleBirth = [3];
     if (cell.isAlive || numAliveNeighbors === 3) {
       evolvedCell.isAlive = (1 < numAliveNeighbors && numAliveNeighbors < 4);
     }

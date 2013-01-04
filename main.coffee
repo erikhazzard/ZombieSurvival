@@ -11,7 +11,7 @@ class Conway
     cellSize: 10
     numberOfRows: 40
     numberOfColumns: 40
-    seedProbability: 0.5
+    seedProbability: 0.1
     tickLength: 100
     canvas: null
     drawingContext: null
@@ -115,15 +115,24 @@ class Conway
         }
         numAliveNeighbors = @countAliveNeighbors(cell)
 
+        ruleStayAlive = [2,3]
+        ruleBirth = [3]
+
         ##Based on its neighbors (and if it's alive already), implement
         ##  rules for birth and death
-        ##RULES (23/3 rule) (first numbers are requiredments for staying alive, 
+        ##RULES (XY/Z rule) (first numbers are requiredments for staying alive, 
         ##  second number is requirement for birth):
         ##  1. cell is born if it has exactly 3 living neighbors
         ##  2. stays alive (must already be alive) if it has 2 or 3 living neighbors
         ##  3. dies otherwise 
+        #23/3
         if cell.isAlive or numAliveNeighbors is 3
             evolvedCell.isAlive = 1 < numAliveNeighbors < 4
+
+        #MAZE
+        #12345/3
+        #if cell.isAlive or numAliveNeighbors is 3
+            #evolvedCell.isAlive = 0 < numAliveNeighbors < 5
 
         ##16/6
         #if cell.isAlive or numAliveNeighbors is 6
