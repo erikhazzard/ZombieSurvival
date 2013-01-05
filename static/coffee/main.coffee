@@ -2,6 +2,7 @@
 #Require Config (load additional libraries)
 #========================================
 requirejs.config({
+    baseUrl: '/static/js',
     shim: {
         'lib/backbone': {
             #These script dependencies should be loaded before loading

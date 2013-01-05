@@ -20,7 +20,7 @@ JS_TARGETS = \
 # ---------------------------------------
 #  Make
 # ---------------------------------------
-all: coffee js
+all: coffee
 
 #Coffee script
 coffee:
@@ -30,10 +30,13 @@ coffee:
 	@coffee --compile --output static/js static/coffee
 	@coffee --compile --output static/js/views static/coffee/views
 	@coffee --compile --output static/js/models static/coffee/models
+	@coffee --compile --output static/js/spec static/coffee/spec
 	@echo "Compiled coffeejs...	${CHECK} Done\n"
 	@echo "${HR}"
 	@echo "\n${HR}"
 
+watch:
+	@when-changed.py static/coffee/*.coffee static/coffee/views/*.coffee static/coffee/models/*.coffee static/coffee/spec/*.coffee -c make
 # ---------------------------------------
 # JS files
 # ---------------------------------------

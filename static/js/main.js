@@ -1,6 +1,7 @@
 (function() {
 
   requirejs.config({
+    baseUrl: '/static/js',
     shim: {
       'lib/backbone': {
         deps: ['lib/underscore', 'lib/jquery'],
