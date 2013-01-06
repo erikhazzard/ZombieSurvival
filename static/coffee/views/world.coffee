@@ -102,13 +102,14 @@ define(["lib/backbone"], (Backbone)->
             #Calculate x / y, draw cells
             x = cell.column * cellSize
             y = cell.row * cellSize
+            @model.set({'showTrails': true})
             if cell.isAlive
-                if @showTrails
-                    fillStyle = 'rgba(100,200,100,0.7)'
+                if @model.get('showTrails')
+                    fillStyle = 'rgba(100,150,200,0.7)'
                 else
                     fillStyle = 'rgb(100,200,100)'
             else
-                if @showTrails
+                if @model.get('showTrails')
                     fillStyle = 'rgba(125,125,125,0.8)'
                 else
                     fillStyle = 'rgb(125,125,125)'
@@ -157,6 +158,14 @@ define(["lib/backbone"], (Backbone)->
             return evolvedCell
 
         updateCurrentGeneration: ()->
+            #This function gets the 'evoled' cell for each cell and
+            #  updates the model's currentCellGeneration object
+
+            #Update the current generation count
+            generationNum = @model.get('generationNum')
+            @model.set('generationNum', generationNum + 1)
+
+            #Get new cell states
             newCellGeneration = {}
             for row in [0...@model.get('numberOfRows')]
                 newCellGeneration[row] = []
@@ -181,7 +190,7 @@ define(["lib/backbone"], (Backbone)->
 
             numAliveNeighbors = 0
 
-            if @toroidal
+            if @model.get('toroidal')
                 #Loop edges on itself
                 rowBot = cell.row - 1
                 rowTop = cell.row + 1

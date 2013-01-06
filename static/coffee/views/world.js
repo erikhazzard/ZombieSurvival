@@ -116,14 +116,17 @@ define(["lib/backbone"], function(Backbone) {
       cellSize = this.model.get('cellSize');
       x = cell.column * cellSize;
       y = cell.row * cellSize;
+      this.model.set({
+        'showTrails': true
+      });
       if (cell.isAlive) {
-        if (this.showTrails) {
-          fillStyle = 'rgba(100,200,100,0.7)';
+        if (this.model.get('showTrails')) {
+          fillStyle = 'rgba(100,150,200,0.7)';
         } else {
           fillStyle = 'rgb(100,200,100)';
         }
       } else {
-        if (this.showTrails) {
+        if (this.model.get('showTrails')) {
           fillStyle = 'rgba(125,125,125,0.8)';
         } else {
           fillStyle = 'rgb(125,125,125)';
@@ -155,7 +158,9 @@ define(["lib/backbone"], function(Backbone) {
     };
 
     World.prototype.updateCurrentGeneration = function() {
-      var column, evolvedCell, newCellGeneration, row, _ref, _ref2;
+      var column, evolvedCell, generationNum, newCellGeneration, row, _ref, _ref2;
+      generationNum = this.model.get('generationNum');
+      this.model.set('generationNum', generationNum + 1);
       newCellGeneration = {};
       for (row = 0, _ref = this.model.get('numberOfRows'); 0 <= _ref ? row < _ref : row > _ref; 0 <= _ref ? row++ : row--) {
         newCellGeneration[row] = [];
@@ -176,7 +181,7 @@ define(["lib/backbone"], function(Backbone) {
       lowerColumnBound = Math.max(cell.column - 1, 0);
       upperColumnBound = Math.min(cell.column + 1, numberOfColumns - 1);
       numAliveNeighbors = 0;
-      if (this.toroidal) {
+      if (this.model.get('toroidal')) {
         rowBot = cell.row - 1;
         rowTop = cell.row + 1;
         colBot = cell.column - 1;

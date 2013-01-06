@@ -3,6 +3,8 @@
 #========================================
 requirejs.config({
     baseUrl: '/static/js',
+    #For dev
+    urlArgs: "v="+(new Date()).getTime(),
     shim: {
         'lib/backbone': {
             #These script dependencies should be loaded before loading
@@ -18,7 +20,11 @@ requirejs.config({
 #========================================
 #Set everything up
 #========================================
-require(["jquery", "models/world", "views/world"], ($, worldModel, worldView)->
+require(["jquery", "models/world", "views/world", "views/app"], ($, worldModel, worldView, appView)->
+    #app setup
+    app = new appView()
+
+    #game setup
     game = new worldModel()
     gameView = new worldView({
         model: game

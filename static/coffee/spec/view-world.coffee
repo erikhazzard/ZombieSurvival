@@ -1,8 +1,11 @@
-define(['views/world'], (world)->
-   describe('view', ()->
-        it('should return true', ()->
-            a = {a: true}
-            a.a.should.equal(true)
+#========================================
+#TEST - View - World
+#========================================
+define(['views/world'], (World)->
+   describe('World model', ()->
+        it('should have some default parameters', ()->
+            console.log(World)
+            world = new World({})
         )
     )
 )
