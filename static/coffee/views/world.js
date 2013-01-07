@@ -2,7 +2,7 @@ var __bind = function(fn, me){ return function(){ return fn.apply(me, arguments)
   __hasProp = Object.prototype.hasOwnProperty,
   __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
-define(["lib/backbone", "models/cell"], function(Backbone, Cell) {
+define(["lib/backbone", "models/cell", "models/entity", "events"], function(Backbone, Cell, Entity, events) {
   var World;
   World = (function(_super) {
 
@@ -14,7 +14,28 @@ define(["lib/backbone", "models/cell"], function(Backbone, Cell) {
     }
 
     World.prototype.initialize = function() {
+      var _this = this;
       this.canvas = null;
+      this.camera = {
+        x: 0,
+        y: 0,
+        size: 50
+      };
+      this.cellSize = 8;
+      events.on('camera:move', function(xyDelta) {
+        var newX, newY, x, y;
+        x = xyDelta.x || 0;
+        y = xyDelta.y || 0;
+        newX = _this.camera.x + x;
+        newY = _this.camera.y + y;
+        if (newX >= 0 && (newX + _this.camera.size) <= (_this.model.get('numberOfColumns'))) {
+          _this.camera.x = newX;
+        }
+        if (newY >= 0 && (newY + _this.camera.size) <= (_this.model.get('numberOfRows'))) {
+          _this.camera.y = newY;
+        }
+        return _this.camera;
+      });
       return this;
     };
 
@@ -23,52 +44,36 @@ define(["lib/backbone", "models/cell"], function(Backbone, Cell) {
       this.resizeCanvas();
       this.createDrawingContext();
       this.seed();
+      this.setupEntities();
       this.tick();
       return this;
     };
 
     World.prototype.createCanvas = function() {
-      var _this = this;
       this.canvas = document.createElement('canvas');
-      this.canvas.addEventListener('click', function(e) {
-        var cellColumn, cellRow, column, currentCellGeneration, lowerColumnBound, lowerRowBound, row, upperColumnBound, upperRowBound, x, y, _results;
-        x = e.x - _this.canvas.offsetLeft;
-        y = e.y - _this.canvas.offsetTop;
-        cellColumn = Math.round(Math.floor(x / _this.model.get('cellSize')));
-        cellRow = Math.round(Math.floor(y / _this.model.get('cellSize')));
-        currentCellGeneration = _this.model.get('currentCellGeneration');
-        currentCellGeneration[cellRow][cellColumn].set({
-          state: 'alive'
-        });
-        lowerRowBound = Math.max(cellRow - 1, 0);
-        upperRowBound = Math.min(cellRow + 1, _this.model.get('numberOfRows') - 1);
-        lowerColumnBound = Math.max(cellColumn - 1, 0);
-        upperColumnBound = Math.min(cellColumn + 1, _this.model.get('numberOfColumns') - 1);
-        _results = [];
-        for (row = lowerRowBound; lowerRowBound <= upperRowBound ? row <= upperRowBound : row >= upperRowBound; lowerRowBound <= upperRowBound ? row++ : row--) {
-          _results.push((function() {
-            var _results2;
-            _results2 = [];
-            for (column = lowerColumnBound; lowerColumnBound <= upperColumnBound ? column <= upperColumnBound : column >= upperColumnBound; lowerColumnBound <= upperColumnBound ? column++ : column--) {
-              _results2.push(currentCellGeneration[row][column].set({
-                state: 'alive'
-              }));
-            }
-            return _results2;
-          })());
-        }
-        return _results;
-      });
       return document.body.appendChild(this.canvas);
     };
 
     World.prototype.resizeCanvas = function() {
-      this.canvas.width = this.model.get('cellSize') * this.model.get('numberOfColumns');
-      return this.canvas.height = this.model.get('cellSize') * this.model.get('numberOfRows');
+      var cameraSize;
+      if (this.camera && this.camera.size) {
+        cameraSize = this.camera.size;
+      } else {
+        cameraSize = this.model.get('numberOfColumns');
+      }
+      this.canvas.width = this.cellSize * cameraSize;
+      return this.canvas.height = this.cellSize * cameraSize;
     };
 
     World.prototype.createDrawingContext = function() {
       return this.drawingContext = this.canvas.getContext('2d');
+    };
+
+    World.prototype.tick = function() {
+      requestAnimFrame(this.tick);
+      this.drawGrid();
+      this.updateEntities();
+      return this;
     };
 
     World.prototype.seed = function() {
@@ -86,164 +91,95 @@ define(["lib/backbone", "models/cell"], function(Backbone, Cell) {
     };
 
     World.prototype.createSeedCell = function(row, column) {
-      var state;
+      var cell, color, state;
       if (Math.random() < this.model.get('seedProbability')) {
-        state = 'alive';
+        state = 'resource';
       } else {
-        state = 'dead';
+        state = 'empty';
+      }
+      if (Math.random() < (this.model.get('seedProbability') / 10)) {
+        state = 'weapon';
       }
       if (Math.random() < (this.model.get('seedProbability') / 12)) {
-        state = 'zombie';
+        state = 'shelter';
       }
-      return new Cell({
+      color = Cell.prototype.getColor(state);
+      cell = new Cell({
         state: state,
+        color: color,
         row: row,
         column: column
       });
+      return cell;
     };
 
-    World.prototype.tick = function() {
-      requestAnimFrame(this.tick);
-      this.drawGrid();
-      return this.updateCurrentGeneration();
+    World.prototype.setupEntities = function() {
+      this.model.set({
+        entities: [new Entity()]
+      });
+      return this;
     };
 
     World.prototype.drawGrid = function() {
-      var column, row, _ref, _ref2;
-      for (row = 0, _ref = this.model.get('numberOfRows'); 0 <= _ref ? row < _ref : row > _ref; 0 <= _ref ? row++ : row--) {
-        for (column = 0, _ref2 = this.model.get('numberOfColumns'); 0 <= _ref2 ? column < _ref2 : column > _ref2; 0 <= _ref2 ? column++ : column--) {
-          this.drawCell(this.model.get('currentCellGeneration')[row][column]);
+      var cameraColumn, cameraRow, column, row, _ref, _ref2, _ref3, _ref4;
+      cameraColumn = 0;
+      cameraRow = 0;
+      for (row = _ref = this.camera.y, _ref2 = this.camera.size + this.camera.y; _ref <= _ref2 ? row < _ref2 : row > _ref2; _ref <= _ref2 ? row++ : row--) {
+        cameraColumn = 0;
+        for (column = _ref3 = this.camera.x, _ref4 = this.camera.size + this.camera.x; _ref3 <= _ref4 ? column < _ref4 : column > _ref4; _ref3 <= _ref4 ? column++ : column--) {
+          this.drawCell(this.model.get('currentCellGeneration')[row][column], {
+            x: cameraColumn,
+            y: cameraRow
+          });
+          cameraColumn += 1;
         }
+        cameraRow += 1;
       }
       return true;
     };
 
-    World.prototype.drawCell = function(cell) {
-      var cellSize, fillStyle, x, y;
-      cellSize = this.model.get('cellSize');
-      x = cell.get('column') * cellSize;
-      y = cell.get('row') * cellSize;
+    World.prototype.drawCell = function(cell, position) {
+      var fillStyle, x, y;
+      x = position.x * this.cellSize;
+      y = position.y * this.cellSize;
       fillStyle = cell.get('color');
       this.drawingContext.strokeStyle = 'rgb(100,100,100)';
-      this.drawingContext.strokeRect(x, y, cellSize, cellSize);
+      this.drawingContext.strokeRect(x, y, this.cellSize, this.cellSize);
       this.drawingContext.fillStyle = fillStyle;
-      this.drawingContext.fillRect(x, y, cellSize, cellSize);
+      this.drawingContext.fillRect(x, y, this.cellSize, this.cellSize);
       return this;
     };
 
-    World.prototype.evolveCell = function(cell) {
-      var evolvedCell, neighbors, state;
-      evolvedCell = new Cell({
-        row: cell.get('row'),
-        column: cell.get('column'),
-        state: cell.get('state')
-      });
-      neighbors = this.countNeighbors(cell);
-      state = cell.get('state');
-      if (cell.get('state') === 'alive') {
-        state = 'alive';
-        if (Math.random() < 0.005) state = 'zombie';
-      }
-      if (cell.get('state') === 'dead' && neighbors.alive > 2) {
-        if (Math.random() < ((0.1 * neighbors.alive) - (0.05 * neighbors.zombie))) {
-          state = 'alive';
-        }
-      }
-      if (cell.get('state') === 'alive' && neighbors.zombie > 0) {
-        if (Math.random() < ((0.2 * neighbors.zombie) - (0.12 * neighbors.human))) {
-          state = 'zombie';
-        }
-      }
-      if (cell.get('state') === 'zombie') {
-        if (Math.random() > 0.01) {
-          state = 'zombie';
-        } else {
-          state = 'dead';
-        }
-      }
-      if (cell.get('state') === 'zombie') {
-        if (Math.random() < ((0.2 * neighbors.alive) - (0.25 * neighbors.zombies))) {
-          state = 'dead';
-        }
-      }
-      if (cell.get('state') === 'dead') {
-        if (Math.random() < ((neighbors.zombie * 0.2) - (neighbors.alive * 0.1))) {
-          state = 'zombie';
-        }
-      }
-      evolvedCell.set({
-        state: state,
-        color: cell.getColor(state)
-      });
-      return evolvedCell;
-    };
-
-    World.prototype.updateCurrentGeneration = function() {
-      var column, evolvedCell, generationNum, newCellGeneration, row, _ref, _ref2;
+    World.prototype.updateEntities = function() {
+      var entities, entity, generationNum, newEntities, newEntity, _i, _len;
       generationNum = this.model.get('generationNum');
       this.model.set('generationNum', generationNum + 1);
-      newCellGeneration = {};
-      for (row = 0, _ref = this.model.get('numberOfRows'); 0 <= _ref ? row < _ref : row > _ref; 0 <= _ref ? row++ : row--) {
-        newCellGeneration[row] = [];
-        for (column = 0, _ref2 = this.model.get('numberOfColumns'); 0 <= _ref2 ? column < _ref2 : column > _ref2; 0 <= _ref2 ? column++ : column--) {
-          evolvedCell = this.evolveCell(this.model.get('currentCellGeneration')[row][column]);
-          newCellGeneration[row][column] = evolvedCell;
-        }
+      newEntities = [];
+      entities = this.model.get('entities');
+      for (_i = 0, _len = entities.length; _i < _len; _i++) {
+        entity = entities[_i];
+        newEntity = this.updateEntity(entity);
+        newEntities.push(newEntity);
       }
-      return this.model.set('currentCellGeneration', newCellGeneration);
+      this.model.set({
+        'entities': newEntities
+      });
+      this.drawEntities();
+      return this;
     };
 
-    World.prototype.countNeighbors = function(cell) {
-      var cellColumn, cellRow, colBot, colTop, column, curColumn, curRow, lowerColumnBound, lowerRowBound, neighbors, numberOfColumns, numberOfRows, row, rowBot, rowTop, upperColumnBound, upperRowBound;
-      numberOfRows = this.model.get('numberOfRows');
-      numberOfColumns = this.model.get('numberOfColumns');
-      cellRow = cell.get('row');
-      cellColumn = cell.get('column');
-      lowerRowBound = Math.max(cellRow - 1, 0);
-      upperRowBound = Math.min(cellRow + 1, numberOfRows - 1);
-      lowerColumnBound = Math.max(cellColumn - 1, 0);
-      upperColumnBound = Math.min(cellColumn + 1, numberOfColumns - 1);
-      neighbors = {
-        alive: 0,
-        dead: 0,
-        zombie: 0
-      };
-      if (this.model.get('toroidal')) {
-        rowBot = cellRow - 1;
-        rowTop = cellRow + 1;
-        colBot = cellColumn - 1;
-        colTop = cellColumn + 1;
-        for (curRow = rowBot; rowBot <= rowTop ? curRow <= rowTop : curRow >= rowTop; rowBot <= rowTop ? curRow++ : curRow--) {
-          for (curColumn = colBot; colBot <= colTop ? curColumn <= colTop : curColumn >= colTop; colBot <= colTop ? curColumn++ : curColumn--) {
-            if (curRow === cellRow && curColumn === cellColumn) continue;
-            row = curRow;
-            column = curColumn;
-            if (row < 0) {
-              row = numberOfRows - 1;
-            } else if (row > numberOfRows) {
-              row = 0;
-            } else if (row > (numberOfRows - 1)) {
-              row = 0;
-            }
-            if (column < 0) {
-              column = numberOfColumns - 1;
-            } else if (column > numberOfColumns) {
-              column = 0;
-            } else if (column > (numberOfColumns - 1)) {
-              column = 0;
-            }
-            neighbors[this.model.get('currentCellGeneration')[row][column].get('state')] += 1;
-          }
-        }
-      } else {
-        for (row = lowerRowBound; lowerRowBound <= upperRowBound ? row <= upperRowBound : row >= upperRowBound; lowerRowBound <= upperRowBound ? row++ : row--) {
-          for (column = lowerColumnBound; lowerColumnBound <= upperColumnBound ? column <= upperColumnBound : column >= upperColumnBound; lowerColumnBound <= upperColumnBound ? column++ : column--) {
-            if (row === cellRow && column === cellColumn) continue;
-            neighbors[this.model.get('currentCellGeneration')[row][column].get('state')] += 1;
-          }
-        }
+    World.prototype.updateEntity = function(entity) {
+      return entity;
+    };
+
+    World.prototype.drawEntities = function() {
+      var entities, entity, _i, _len;
+      entities = this.model.get('entities');
+      for (_i = 0, _len = entities.length; _i < _len; _i++) {
+        entity = entities[_i];
+        this.drawCell(entity, entity.get('position'));
       }
-      return neighbors;
+      return this;
     };
 
     return World;

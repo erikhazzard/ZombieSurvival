@@ -13,19 +13,24 @@ define(["lib/backbone", "events"], (Backbone, events)->
             tickLength: 100
             generationNum: 0
 
-            cellSize: 12
-            numberOfRows: 50
-            numberOfColumns: 50
-            seedProbability: 0.1
+            numberOfRows: 250
+            numberOfColumns: 250
+            seedProbability: 0.05
+
             #Default - 23/3
             rules: {
                 stayAlive: [2,3],
                 birth: [3]
             }
+
             #if we should 'loop' the edges on itself (e.g., if the underlying topology
             #  is toroidal
             toroidal: true
             showTrails: true
+
+            #List of entities - humans, zombies, etc
+            #  TODO: Should items / resources be entities? Effects upon entering?
+            entities: []
         }
 
         initialize: ()=>

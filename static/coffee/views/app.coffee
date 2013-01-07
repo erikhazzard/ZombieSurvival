@@ -5,9 +5,10 @@
 # ===========================================================================
 define(["lib/backbone", "events"], (Backbone, events)->
     class App extends Backbone.View
-        el: 'body'
+        el: 'html'
         events: {
             'change #rules-input': 'updateRules'
+            'keydown body': 'handleGlobalInput'
         }
         #====================================
         #
@@ -29,5 +30,23 @@ define(["lib/backbone", "events"], (Backbone, events)->
                 'world:model:changeRuleString',
                 $(e.target).val()
             )
+
+
+        #Site wide input
+        handleGlobalInput: (e)->
+            keyCode = e.keyCode
+            if keyCode == 37
+                #left
+                events.trigger('camera:move', {x: -1})
+            if keyCode == 38
+                #up
+                events.trigger('camera:move', {y: -1})
+            if keyCode == 39
+                #right
+                events.trigger('camera:move', {x: 1})
+            else if keyCode == 40
+                #down
+                events.trigger('camera:move', {y: 1})
+            return @
     return App
 )

@@ -21,16 +21,16 @@
         drawingContext: null,
         tickLength: 100,
         generationNum: 0,
-        cellSize: 12,
-        numberOfRows: 50,
-        numberOfColumns: 50,
-        seedProbability: 0.1,
+        numberOfRows: 250,
+        numberOfColumns: 250,
+        seedProbability: 0.05,
         rules: {
           stayAlive: [2, 3],
           birth: [3]
         },
         toroidal: true,
-        showTrails: true
+        showTrails: true,
+        entities: []
       };
 
       World.prototype.initialize = function() {

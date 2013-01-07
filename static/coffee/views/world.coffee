@@ -3,7 +3,7 @@
 # game - world view 
 #
 # ===========================================================================
-define(["lib/backbone", "models/cell"], (Backbone, Cell)->
+define(["lib/backbone", "models/cell", "models/entity", "events"], (Backbone, Cell, Entity, events)->
     class World extends Backbone.View
         #====================================
         #
@@ -13,6 +13,40 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
         initialize: ()->
             #Properties we'll use later
             @canvas = null
+
+            #Limit drawing area
+            @camera = {
+                x: 0
+                y: 0
+                size: 50
+            }
+
+            #size (in px) of each cell
+            @cellSize = 8
+
+            #TODO: Check world size
+            
+            #Listen for camera move events
+            events.on('camera:move', (xyDelta)=>
+                #Takes in an object containing the delta change in x and y
+                #  directions. e.g., {x: 1, y: 0} or {x: -1, y: -1}
+                x = xyDelta.x || 0
+                y = xyDelta.y || 0
+
+                #update camera position
+                newX = @camera.x + x
+                newY = @camera.y + y
+
+                #Can't go below 0 and above bounds of world
+                if newX >= 0 and (newX + @camera.size) <= (@model.get('numberOfColumns'))
+                    @camera.x = newX
+
+                if newY >= 0 and (newY + @camera.size) <= (@model.get('numberOfRows'))
+                    @camera.y = newY
+                
+                return @camera
+
+            )
             return @
 
         render: ()->
@@ -20,47 +54,42 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
             @resizeCanvas()
             @createDrawingContext()
             @seed()
+            @setupEntities()
             @tick()
             return @
 
         #Setup canvas
         createCanvas: ()->
             @canvas = document.createElement('canvas')
-
-            #When clicking on a cell, make neighboring cells alive
-            @canvas.addEventListener('click', (e)=>
-                x = e.x - @canvas.offsetLeft
-                y = e.y - @canvas.offsetTop
-                #Get the row / column the user clicked on
-                cellColumn = Math.round(Math.floor(x / @model.get('cellSize')))
-                cellRow = Math.round(Math.floor(y / @model.get('cellSize')))
-                currentCellGeneration = @model.get('currentCellGeneration')
-                
-                #Make that cell alive
-                currentCellGeneration[cellRow][cellColumn].set({state: 'alive'})
-
-                #Get cells around current cell
-                lowerRowBound = Math.max(cellRow - 1, 0)
-                upperRowBound = Math.min(cellRow + 1, @model.get('numberOfRows') - 1)
-                lowerColumnBound = Math.max(cellColumn - 1, 0)
-                upperColumnBound = Math.min(cellColumn + 1, @model.get('numberOfColumns') - 1)
-
-                #Set cells status to alive
-                for row in [lowerRowBound..upperRowBound]
-                    for column in [lowerColumnBound..upperColumnBound]
-                        currentCellGeneration[row][column].set({state:'alive'})
-     
-            )
             document.body.appendChild(@canvas)
 
         resizeCanvas: ()->
-            @canvas.width = @model.get('cellSize') * @model.get('numberOfColumns')
-            @canvas.height = @model.get('cellSize') * @model.get('numberOfRows')
+            if @camera and @camera.size
+                cameraSize = @camera.size
+            else
+                cameraSize = @model.get('numberOfColumns')
+            @canvas.width = @cellSize * cameraSize
+            @canvas.height = @cellSize * cameraSize
 
         createDrawingContext: ()->
             @drawingContext = @canvas.getContext('2d')
 
+        #--------------------------------
+        #
+        #Game Tick
+        #
+        #--------------------------------
+        tick: ()=>
+            #Tick function - called at every time interval to update
+            #  the world
+            requestAnimFrame(@tick)
+            @drawGrid()
+            @updateEntities()
+            return @
+
+        #--------------------------------
         #Initialize world
+        #--------------------------------
         seed: ()->
             currentCellGeneration = []
             for row in [0...@model.get('numberOfRows')]
@@ -71,212 +100,112 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
             
             #Update the model
             @model.set('currentCellGeneration', currentCellGeneration)
+
+            #Add entities
             return @
 
         createSeedCell: (row, column)->
             #This sets up the initial state of the world
-            
             if Math.random() < @model.get('seedProbability')
-                state = 'alive'
+                state = 'resource'
             else
-                state = 'dead'
+                state = 'empty'
 
-            #Seed some zombies - TODO, should be player controlled?
+            if Math.random() < (@model.get('seedProbability') / 10)
+                state = 'weapon'
             if Math.random() < (@model.get('seedProbability') / 12)
-                state = 'zombie'
+                state = 'shelter'
 
-            return new Cell({
+            color = Cell.prototype.getColor(state)
+            cell = new Cell({
                 state: state
+                color: color
                 row: row
                 column: column
             })
+            return cell
 
-        tick: ()=>
-            #Tick function - called at every time interval to update
-            #  the world
-            requestAnimFrame(@tick)
-            @drawGrid()
-            @updateCurrentGeneration()
+        setupEntities: ()->
+            #Create entities in the world ( humans, zombies )
+            @model.set({ entities: [ new Entity() ] })
 
-        #draw world
+            return @
+        
+        #--------------------------------
+        #
+        #Draw functions
+        #
+        #--------------------------------
         drawGrid: ()->
-            for row in [0...@model.get('numberOfRows')]
-                for column in [0...@model.get('numberOfColumns')]
-                    @drawCell(@model.get('currentCellGeneration')[row][column])
+            #Draw each cell
+            cameraColumn = 0
+            cameraRow = 0
+
+            for row in [@camera.y...@camera.size+@camera.y]
+                #Reset column back to 0
+                cameraColumn = 0
+                for column in [@camera.x...@camera.size+@camera.x]
+                    @drawCell(@model.get('currentCellGeneration')[row][column],
+                        { x: cameraColumn, y: cameraRow })
+                    cameraColumn += 1
+
+                cameraRow += 1
             return true
 
-        drawCell: (cell)->
+        drawCell: (cell, position)->
             #Draws a cell with canvas
-            #
-            #Store local refs
-            cellSize = @model.get('cellSize')
 
             #Calculate x / y, draw cells
-            x = cell.get('column') * cellSize
-            y = cell.get('row') * cellSize
+            x = position.x * @cellSize
+            y = position.y * @cellSize
+            #use the cell's color
             fillStyle = cell.get('color')
             
-            #@drawingContext.strokeStyle = 'rgba(0,50,100,0.5)'
+            #draw the cell
             @drawingContext.strokeStyle = 'rgb(100,100,100)'
-            @drawingContext.strokeRect(x,y,cellSize, cellSize)
+            @drawingContext.strokeRect(x,y,@cellSize, @cellSize)
             @drawingContext.fillStyle = fillStyle
-            @drawingContext.fillRect(x,y,cellSize,cellSize)
+            @drawingContext.fillRect(x,y,@cellSize,@cellSize)
 
             return @
 
-        #------------------------------------
-        #Evolve cell
-        #------------------------------------
-        evolveCell: (cell)->
-            #This function determins if a cell is born or dies
-            evolvedCell = new Cell({
-                row: cell.get('row')
-                column: cell.get('column')
-                state: cell.get('state')
-            })
-            neighbors = @countNeighbors(cell)
-
-            ##Based on its neighbors (and if it's alive already), implement
-            ##  rules for birth and death
-            ##RULES (XY/Z rule) (first numbers are requirements for staying alive, 
-            ##  second number is requirement for birth):
-            ##  1. cell is born if it has exactly 3 living neighbors
-            ##  2. stays alive (must already be alive) if it has 2 or 3 living neighbors
-            ##  3. dies otherwise 
-            #23/3
-
-            #Previous state is maintained by default
-            state = cell.get('state')
-
-            #Check for human
-            #----------------------------
-            if (cell.get('state') == 'alive') #(@model.get('rules').stayAlive.indexOf(neighbors.alive) > -1)
-                #If it's already alive, check to see if it should stay alive
-                state = 'alive'
-                #Human die of old age, add in some probaility of them turning 
-                if Math.random() < 0.005
-                    state = 'zombie'
-
-            #BIRTH (human)
-            if cell.get('state') == 'dead' and neighbors.alive > 2
-                #Birth probability
-                if Math.random() < ( ( 0.1 * neighbors.alive) - (0.05 * neighbors.zombie))
-                    #If it wasn't alive, check for birth
-                    state = 'alive'
-
-            #Check for zombie
-            #----------------------------
-            if cell.get('state') == 'alive' and neighbors.zombie > 0
-                #Chance of turning into zombie is based on neighboring
-                #  zombies AND how many humans are around you
-                if Math.random() < ( (0.2 * neighbors.zombie) - (0.12 * neighbors.human) )
-                    state = 'zombie'
-
-            if cell.get('state') == 'zombie'
-                #Zombies decay, so there is a small chance the zombie will die
-                if Math.random() > 0.01
-                    state = 'zombie'
-                else
-                    state = 'dead'
-
-            #Check for zombies being killed by humans
-            if cell.get('state') == 'zombie'
-                if Math.random() < ((0.2 * neighbors.alive) - (0.25 * neighbors.zombies) )
-                    state = 'dead'
-
-            #Check for 'movement' (zombie or human)
-            #----------------------------
-            #Need to move the neighbor...
-            #birth of zombie
-            if cell.get('state') == 'dead'
-                if Math.random() < ( (neighbors.zombie * 0.2) - ( neighbors.alive * 0.1) )
-                    state = 'zombie'
-
-            #Set updated cell
-            #----------------------------
-            evolvedCell.set({
-                state: state
-                color: cell.getColor( state )
-            })
-
-            return evolvedCell
-
-        updateCurrentGeneration: ()->
-            #This function gets the 'evoled' cell for each cell and
-            #  updates the model's currentCellGeneration object
-
-            #Update the current generation count
+        #--------------------------------
+        #
+        #Update Game / Cell / Entity States
+        #
+        #--------------------------------
+        #This is where the bulk of our game logic lies
+        updateEntities: ()->
             generationNum = @model.get('generationNum')
             @model.set('generationNum', generationNum + 1)
 
-            #Get new cell states
-            newCellGeneration = {}
-            for row in [0...@model.get('numberOfRows')]
-                newCellGeneration[row] = []
-                for column in [0...@model.get('numberOfColumns')]
-                    evolvedCell = @evolveCell(@model.get('currentCellGeneration')[row][column])
-                    newCellGeneration[row][column] = evolvedCell
+            #Loop through all entities ( humans and zombies )
+            #  Do this on a copy of entities to avoid collisons
+            newEntities = []
+            entities = @model.get('entities')
 
-            @model.set('currentCellGeneration', newCellGeneration)
+            for entity in entities
+                newEntity = @updateEntity(
+                    entity
+                )
+                newEntities.push(newEntity)
 
-        countNeighbors: (cell)->
-            #This function calculates neighbors. If toroidal is true, the world
-            #  will loop in on itself
-            numberOfRows = @model.get('numberOfRows')
-            numberOfColumns = @model.get('numberOfColumns')
-            cellRow = cell.get('row')
-            cellColumn = cell.get('column')
+            #update the entities
+            @model.set({'entities': newEntities})
 
-            #Calculate the x,y if it's near the edges
-            lowerRowBound = Math.max(cellRow - 1, 0)
-            upperRowBound = Math.min(cellRow + 1, numberOfRows - 1)
-            lowerColumnBound = Math.max(cellColumn - 1, 0)
-            upperColumnBound = Math.min(cellColumn + 1, numberOfColumns - 1)
+            @drawEntities()
+            return @
 
-            #States
-            neighbors = {
-                alive: 0
-                dead: 0
-                zombie: 0
-            }
+        updateEntity: (entity)->
+            return entity
 
-            if @model.get('toroidal')
-                #Loop edges on itself
-                rowBot = cellRow - 1
-                rowTop = cellRow + 1
-                colBot = cellColumn - 1
-                colTop= cellColumn + 1
-                for curRow in [rowBot..rowTop]
-                    for curColumn in [colBot..colTop]
-                        continue if curRow is cellRow and curColumn is cellColumn
-
-                        row = curRow
-                        column = curColumn
-                        #Wrap around map
-                        if row < 0
-                            row = numberOfRows - 1
-                        else if row > numberOfRows
-                            row = 0
-                        else if row > (numberOfRows - 1)
-                            row = 0
-                        
-                        if column < 0
-                            column = numberOfColumns - 1
-                        else if column > numberOfColumns
-                            column = 0
-                        else if column > (numberOfColumns - 1)
-                            column = 0
-                        
-                        neighbors[@model.get('currentCellGeneration')[row][column].get('state')] += 1
-            else
-                #This is the simpler method, but it cuts off the edges
-                for row in [lowerRowBound..upperRowBound]
-                    for column in [lowerColumnBound..upperColumnBound]
-                        #Skip itself
-                        continue if row is cellRow and column is cellColumn
-                        neighbors[@model.get('currentCellGeneration')[row][column].get('state')] += 1
-
-            return neighbors
+        drawEntities: ()->
+            #Draws the entities
+            entities = @model.get('entities')
+            
+            for entity in entities
+                @drawCell(entity, entity.get('position'))
+            return @
 
     return World
 )

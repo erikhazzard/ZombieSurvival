@@ -4,9 +4,6 @@
     describe('World Model: Default Params', function() {
       var world;
       world = new World({});
-      it('should have default param: cellSize', function() {
-        return world.get('cellSize').should.not.equal(void 0);
-      });
       return it('should have default param: rules', function() {
         world.get('rules').stayAlive.should.not.equal(void 0);
         return world.get('rules').birth.should.not.equal(void 0);

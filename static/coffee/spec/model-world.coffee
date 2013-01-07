@@ -4,9 +4,6 @@
 define(['models/world', 'events'], (World, events)->
    describe('World Model: Default Params', ()->
         world = new World({})
-        it('should have default param: cellSize', ()->
-            world.get('cellSize').should.not.equal(undefined)
-        )
         it('should have default param: rules', ()->
             world.get('rules').stayAlive.should.not.equal(undefined)
             world.get('rules').birth.should.not.equal(undefined)

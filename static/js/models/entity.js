@@ -3,36 +3,36 @@
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
   define(["lib/backbone"], function(Backbone) {
-    var Cell;
-    Cell = (function(_super) {
+    var Entity;
+    Entity = (function(_super) {
 
-      __extends(Cell, _super);
+      __extends(Entity, _super);
 
-      function Cell() {
-        Cell.__super__.constructor.apply(this, arguments);
+      function Entity() {
+        Entity.__super__.constructor.apply(this, arguments);
       }
 
-      Cell.prototype.defaults = {
-        isAlive: true,
-        color: 'rgb(125,125,125)',
-        state: 'empty'
+      Entity.prototype.defaults = {
+        state: "alive",
+        position: {
+          x: 0,
+          y: 0
+        },
+        color: 'rgb(255,255,255)'
       };
 
-      Cell.prototype.getColor = function(state) {
+      Entity.prototype.getColor = function(state) {
         var colors;
         colors = {
-          empty: "rgb(125,125,125)",
-          resource: "rgb(100,220,100)",
-          weapon: "rgb(100,150,200)",
-          shelter: "rgb(50,50,50)"
+          alive: "rgb(255,255,255)"
         };
         return colors[state];
       };
 
-      return Cell;
+      return Entity;
 
     })(Backbone.Model);
-    return Cell;
+    return Entity;
   });
 
 }).call(this);
