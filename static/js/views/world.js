@@ -3,7 +3,7 @@
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
-  define(["lib/backbone"], function(Backbone) {
+  define(["lib/backbone", "models/cell"], function(Backbone, Cell) {
     var World;
     World = (function(_super) {
 
@@ -38,7 +38,9 @@
           cellColumn = Math.round(Math.floor(x / _this.model.get('cellSize')));
           cellRow = Math.round(Math.floor(y / _this.model.get('cellSize')));
           currentCellGeneration = _this.model.get('currentCellGeneration');
-          currentCellGeneration[cellRow][cellColumn].isAlive = true;
+          currentCellGeneration[cellRow][cellColumn].set({
+            state: 'alive'
+          });
           lowerRowBound = Math.max(cellRow - 1, 0);
           upperRowBound = Math.min(cellRow + 1, _this.model.get('numberOfRows') - 1);
           lowerColumnBound = Math.max(cellColumn - 1, 0);
@@ -49,7 +51,9 @@
               var _results2;
               _results2 = [];
               for (column = lowerColumnBound; lowerColumnBound <= upperColumnBound ? column <= upperColumnBound : column >= upperColumnBound; lowerColumnBound <= upperColumnBound ? column++ : column--) {
-                _results2.push(currentCellGeneration[row][column].isAlive = true);
+                _results2.push(currentCellGeneration[row][column].set({
+                  state: 'alive'
+                }));
               }
               return _results2;
             })());
@@ -83,11 +87,20 @@
       };
 
       World.prototype.createSeedCell = function(row, column) {
-        return {
-          isAlive: Math.random() < this.model.get('seedProbability'),
+        var state;
+        if (Math.random() < this.model.get('seedProbability')) {
+          state = 'alive';
+        } else {
+          state = 'dead';
+        }
+        if (Math.random() < (this.model.get('seedProbability') / 12)) {
+          state = 'zombie';
+        }
+        return new Cell({
+          state: state,
           row: row,
           column: column
-        };
+        });
       };
 
       World.prototype.tick = function() {
@@ -97,42 +110,21 @@
       };
 
       World.prototype.drawGrid = function() {
-        var column, row, _ref, _results;
-        _results = [];
+        var column, row, _ref, _ref2;
         for (row = 0, _ref = this.model.get('numberOfRows'); 0 <= _ref ? row < _ref : row > _ref; 0 <= _ref ? row++ : row--) {
-          _results.push((function() {
-            var _ref2, _results2;
-            _results2 = [];
-            for (column = 0, _ref2 = this.model.get('numberOfColumns'); 0 <= _ref2 ? column < _ref2 : column > _ref2; 0 <= _ref2 ? column++ : column--) {
-              _results2.push(this.drawCell(this.model.get('currentCellGeneration')[row][column]));
-            }
-            return _results2;
-          }).call(this));
+          for (column = 0, _ref2 = this.model.get('numberOfColumns'); 0 <= _ref2 ? column < _ref2 : column > _ref2; 0 <= _ref2 ? column++ : column--) {
+            this.drawCell(this.model.get('currentCellGeneration')[row][column]);
+          }
         }
-        return _results;
+        return true;
       };
 
       World.prototype.drawCell = function(cell) {
         var cellSize, fillStyle, x, y;
         cellSize = this.model.get('cellSize');
-        x = cell.column * cellSize;
-        y = cell.row * cellSize;
-        this.model.set({
-          'showTrails': true
-        });
-        if (cell.isAlive) {
-          if (this.model.get('showTrails')) {
-            fillStyle = 'rgba(100,150,200,0.7)';
-          } else {
-            fillStyle = 'rgb(100,200,100)';
-          }
-        } else {
-          if (this.model.get('showTrails')) {
-            fillStyle = 'rgba(125,125,125,0.8)';
-          } else {
-            fillStyle = 'rgb(125,125,125)';
-          }
-        }
+        x = cell.get('column') * cellSize;
+        y = cell.get('row') * cellSize;
+        fillStyle = cell.get('color');
         this.drawingContext.strokeStyle = 'rgb(100,100,100)';
         this.drawingContext.strokeRect(x, y, cellSize, cellSize);
         this.drawingContext.fillStyle = fillStyle;
@@ -141,20 +133,49 @@
       };
 
       World.prototype.evolveCell = function(cell) {
-        var evolvedCell, numAliveNeighbors;
-        evolvedCell = {
-          row: cell.row,
-          column: cell.column,
-          isAlive: cell.isAlive
-        };
-        numAliveNeighbors = this.countAliveNeighbors(cell);
-        if (cell.isAlive && (this.model.get('rules').stayAlive.indexOf(numAliveNeighbors) > -1)) {
-          evolvedCell.isAlive = true;
-        } else if (this.model.get('rules').birth.indexOf(numAliveNeighbors) > -1) {
-          evolvedCell.isAlive = true;
-        } else {
-          evolvedCell.isAlive = false;
+        var evolvedCell, neighbors, state;
+        evolvedCell = new Cell({
+          row: cell.get('row'),
+          column: cell.get('column'),
+          state: cell.get('state')
+        });
+        neighbors = this.countNeighbors(cell);
+        state = cell.get('state');
+        if (cell.get('state') === 'alive') {
+          state = 'alive';
+          if (Math.random() < 0.005) state = 'zombie';
         }
+        if (cell.get('state') === 'dead' && neighbors.alive > 2) {
+          if (Math.random() < ((0.1 * neighbors.alive) - (0.05 * neighbors.zombie))) {
+            state = 'alive';
+          }
+        }
+        if (cell.get('state') === 'alive' && neighbors.zombie > 0) {
+          if (Math.random() < ((0.2 * neighbors.zombie) - (0.12 * neighbors.human))) {
+            state = 'zombie';
+          }
+        }
+        if (cell.get('state') === 'zombie') {
+          if (Math.random() > 0.01) {
+            state = 'zombie';
+          } else {
+            state = 'dead';
+          }
+        }
+        if (cell.get('state') === 'zombie') {
+          if (Math.random() < ((0.2 * neighbors.alive) - (0.25 * neighbors.zombies))) {
+            state = 'dead';
+          }
+        }
+        if (cell.get('state') === 'dead') {
+          if (Math.random() < ((neighbors.zombie * 0.2) - (neighbors.alive * 0.1))) {
+            state = 'zombie';
+          }
+        }
+        evolvedCell.set({
+          state: state,
+          color: cell.getColor(state)
+        });
         return evolvedCell;
       };
 
@@ -173,23 +194,29 @@
         return this.model.set('currentCellGeneration', newCellGeneration);
       };
 
-      World.prototype.countAliveNeighbors = function(cell) {
-        var colBot, colTop, column, curColumn, curRow, lowerColumnBound, lowerRowBound, numAliveNeighbors, numberOfColumns, numberOfRows, row, rowBot, rowTop, upperColumnBound, upperRowBound;
+      World.prototype.countNeighbors = function(cell) {
+        var cellColumn, cellRow, colBot, colTop, column, curColumn, curRow, lowerColumnBound, lowerRowBound, neighbors, numberOfColumns, numberOfRows, row, rowBot, rowTop, upperColumnBound, upperRowBound;
         numberOfRows = this.model.get('numberOfRows');
         numberOfColumns = this.model.get('numberOfColumns');
-        lowerRowBound = Math.max(cell.row - 1, 0);
-        upperRowBound = Math.min(cell.row + 1, numberOfRows - 1);
-        lowerColumnBound = Math.max(cell.column - 1, 0);
-        upperColumnBound = Math.min(cell.column + 1, numberOfColumns - 1);
-        numAliveNeighbors = 0;
+        cellRow = cell.get('row');
+        cellColumn = cell.get('column');
+        lowerRowBound = Math.max(cellRow - 1, 0);
+        upperRowBound = Math.min(cellRow + 1, numberOfRows - 1);
+        lowerColumnBound = Math.max(cellColumn - 1, 0);
+        upperColumnBound = Math.min(cellColumn + 1, numberOfColumns - 1);
+        neighbors = {
+          alive: 0,
+          dead: 0,
+          zombie: 0
+        };
         if (this.model.get('toroidal')) {
-          rowBot = cell.row - 1;
-          rowTop = cell.row + 1;
-          colBot = cell.column - 1;
-          colTop = cell.column + 1;
+          rowBot = cellRow - 1;
+          rowTop = cellRow + 1;
+          colBot = cellColumn - 1;
+          colTop = cellColumn + 1;
           for (curRow = rowBot; rowBot <= rowTop ? curRow <= rowTop : curRow >= rowTop; rowBot <= rowTop ? curRow++ : curRow--) {
             for (curColumn = colBot; colBot <= colTop ? curColumn <= colTop : curColumn >= colTop; colBot <= colTop ? curColumn++ : curColumn--) {
-              if (curRow === cell.row && curColumn === cell.column) continue;
+              if (curRow === cellRow && curColumn === cellColumn) continue;
               row = curRow;
               column = curColumn;
               if (row < 0) {
@@ -206,22 +233,18 @@
               } else if (column > (numberOfColumns - 1)) {
                 column = 0;
               }
-              if (this.model.get('currentCellGeneration')[row][column].isAlive) {
-                numAliveNeighbors += 1;
-              }
+              neighbors[this.model.get('currentCellGeneration')[row][column].get('state')] += 1;
             }
           }
         } else {
           for (row = lowerRowBound; lowerRowBound <= upperRowBound ? row <= upperRowBound : row >= upperRowBound; lowerRowBound <= upperRowBound ? row++ : row--) {
             for (column = lowerColumnBound; lowerColumnBound <= upperColumnBound ? column <= upperColumnBound : column >= upperColumnBound; lowerColumnBound <= upperColumnBound ? column++ : column--) {
-              if (row === cell.row && column === cell.column) continue;
-              if (this.model.get('currentCellGeneration')[row][column].isAlive) {
-                numAliveNeighbors += 1;
-              }
+              if (row === cellRow && column === cellColumn) continue;
+              neighbors[this.model.get('currentCellGeneration')[row][column].get('state')] += 1;
             }
           }
         }
-        return numAliveNeighbors;
+        return neighbors;
       };
 
       return World;

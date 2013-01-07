@@ -24,7 +24,7 @@
         cellSize: 12,
         numberOfRows: 50,
         numberOfColumns: 50,
-        seedProbability: 0.2,
+        seedProbability: 0.1,
         rules: {
           stayAlive: [2, 3],
           birth: [3]

@@ -3,7 +3,7 @@
 # game - world view 
 #
 # ===========================================================================
-define(["lib/backbone"], (Backbone)->
+define(["lib/backbone", "models/cell"], (Backbone, Cell)->
     class World extends Backbone.View
         #====================================
         #
@@ -37,7 +37,7 @@ define(["lib/backbone"], (Backbone)->
                 currentCellGeneration = @model.get('currentCellGeneration')
                 
                 #Make that cell alive
-                currentCellGeneration[cellRow][cellColumn].isAlive = true
+                currentCellGeneration[cellRow][cellColumn].set({state: 'alive'})
 
                 #Get cells around current cell
                 lowerRowBound = Math.max(cellRow - 1, 0)
@@ -48,7 +48,7 @@ define(["lib/backbone"], (Backbone)->
                 #Set cells status to alive
                 for row in [lowerRowBound..upperRowBound]
                     for column in [lowerColumnBound..upperColumnBound]
-                        currentCellGeneration[row][column].isAlive = true
+                        currentCellGeneration[row][column].set({state:'alive'})
      
             )
             document.body.appendChild(@canvas)
@@ -74,11 +74,22 @@ define(["lib/backbone"], (Backbone)->
             return @
 
         createSeedCell: (row, column)->
-            return {
-                isAlive: Math.random() < @model.get('seedProbability')
+            #This sets up the initial state of the world
+            
+            if Math.random() < @model.get('seedProbability')
+                state = 'alive'
+            else
+                state = 'dead'
+
+            #Seed some zombies - TODO, should be player controlled?
+            if Math.random() < (@model.get('seedProbability') / 12)
+                state = 'zombie'
+
+            return new Cell({
+                state: state
                 row: row
                 column: column
-            }
+            })
 
         tick: ()=>
             #Tick function - called at every time interval to update
@@ -92,27 +103,18 @@ define(["lib/backbone"], (Backbone)->
             for row in [0...@model.get('numberOfRows')]
                 for column in [0...@model.get('numberOfColumns')]
                     @drawCell(@model.get('currentCellGeneration')[row][column])
+            return true
 
         drawCell: (cell)->
             #Draws a cell with canvas
-
+            #
             #Store local refs
             cellSize = @model.get('cellSize')
 
             #Calculate x / y, draw cells
-            x = cell.column * cellSize
-            y = cell.row * cellSize
-            @model.set({'showTrails': true})
-            if cell.isAlive
-                if @model.get('showTrails')
-                    fillStyle = 'rgba(100,150,200,0.7)'
-                else
-                    fillStyle = 'rgb(100,200,100)'
-            else
-                if @model.get('showTrails')
-                    fillStyle = 'rgba(125,125,125,0.8)'
-                else
-                    fillStyle = 'rgb(125,125,125)'
+            x = cell.get('column') * cellSize
+            y = cell.get('row') * cellSize
+            fillStyle = cell.get('color')
             
             #@drawingContext.strokeStyle = 'rgba(0,50,100,0.5)'
             @drawingContext.strokeStyle = 'rgb(100,100,100)'
@@ -127,12 +129,12 @@ define(["lib/backbone"], (Backbone)->
         #------------------------------------
         evolveCell: (cell)->
             #This function determins if a cell is born or dies
-            evolvedCell = {
-                row: cell.row
-                column: cell.column
-                isAlive: cell.isAlive
-            }
-            numAliveNeighbors = @countAliveNeighbors(cell)
+            evolvedCell = new Cell({
+                row: cell.get('row')
+                column: cell.get('column')
+                state: cell.get('state')
+            })
+            neighbors = @countNeighbors(cell)
 
             ##Based on its neighbors (and if it's alive already), implement
             ##  rules for birth and death
@@ -142,18 +144,60 @@ define(["lib/backbone"], (Backbone)->
             ##  2. stays alive (must already be alive) if it has 2 or 3 living neighbors
             ##  3. dies otherwise 
             #23/3
-            #if cell.isAlive or numAliveNeighbors is 3
-            #    evolvedCell.isAlive = 1 < numAliveNeighbors < 4
-            
-            if cell.isAlive and (@model.get('rules').stayAlive.indexOf(numAliveNeighbors) > -1)
+
+            #Previous state is maintained by default
+            state = cell.get('state')
+
+            #Check for human
+            #----------------------------
+            if (cell.get('state') == 'alive') #(@model.get('rules').stayAlive.indexOf(neighbors.alive) > -1)
                 #If it's already alive, check to see if it should stay alive
-                evolvedCell.isAlive = true
-            else if @model.get('rules').birth.indexOf(numAliveNeighbors) > -1
-                #If it wasn't alive, check for birth
-                evolvedCell.isAlive = true
-            else
-                #The number of neighbors don't match the rule, so it's dead
-                evolvedCell.isAlive = false
+                state = 'alive'
+                #Human die of old age, add in some probaility of them turning 
+                if Math.random() < 0.005
+                    state = 'zombie'
+
+            #BIRTH (human)
+            if cell.get('state') == 'dead' and neighbors.alive > 2
+                #Birth probability
+                if Math.random() < ( ( 0.1 * neighbors.alive) - (0.05 * neighbors.zombie))
+                    #If it wasn't alive, check for birth
+                    state = 'alive'
+
+            #Check for zombie
+            #----------------------------
+            if cell.get('state') == 'alive' and neighbors.zombie > 0
+                #Chance of turning into zombie is based on neighboring
+                #  zombies AND how many humans are around you
+                if Math.random() < ( (0.2 * neighbors.zombie) - (0.12 * neighbors.human) )
+                    state = 'zombie'
+
+            if cell.get('state') == 'zombie'
+                #Zombies decay, so there is a small chance the zombie will die
+                if Math.random() > 0.01
+                    state = 'zombie'
+                else
+                    state = 'dead'
+
+            #Check for zombies being killed by humans
+            if cell.get('state') == 'zombie'
+                if Math.random() < ((0.2 * neighbors.alive) - (0.25 * neighbors.zombies) )
+                    state = 'dead'
+
+            #Check for 'movement' (zombie or human)
+            #----------------------------
+            #Need to move the neighbor...
+            #birth of zombie
+            if cell.get('state') == 'dead'
+                if Math.random() < ( (neighbors.zombie * 0.2) - ( neighbors.alive * 0.1) )
+                    state = 'zombie'
+
+            #Set updated cell
+            #----------------------------
+            evolvedCell.set({
+                state: state
+                color: cell.getColor( state )
+            })
 
             return evolvedCell
 
@@ -175,30 +219,36 @@ define(["lib/backbone"], (Backbone)->
 
             @model.set('currentCellGeneration', newCellGeneration)
 
-        countAliveNeighbors: (cell)->
+        countNeighbors: (cell)->
             #This function calculates neighbors. If toroidal is true, the world
             #  will loop in on itself
-
             numberOfRows = @model.get('numberOfRows')
             numberOfColumns = @model.get('numberOfColumns')
+            cellRow = cell.get('row')
+            cellColumn = cell.get('column')
 
             #Calculate the x,y if it's near the edges
-            lowerRowBound = Math.max(cell.row - 1, 0)
-            upperRowBound = Math.min(cell.row + 1, numberOfRows - 1)
-            lowerColumnBound = Math.max(cell.column - 1, 0)
-            upperColumnBound = Math.min(cell.column + 1, numberOfColumns - 1)
+            lowerRowBound = Math.max(cellRow - 1, 0)
+            upperRowBound = Math.min(cellRow + 1, numberOfRows - 1)
+            lowerColumnBound = Math.max(cellColumn - 1, 0)
+            upperColumnBound = Math.min(cellColumn + 1, numberOfColumns - 1)
 
-            numAliveNeighbors = 0
+            #States
+            neighbors = {
+                alive: 0
+                dead: 0
+                zombie: 0
+            }
 
             if @model.get('toroidal')
                 #Loop edges on itself
-                rowBot = cell.row - 1
-                rowTop = cell.row + 1
-                colBot = cell.column - 1
-                colTop= cell.column + 1
+                rowBot = cellRow - 1
+                rowTop = cellRow + 1
+                colBot = cellColumn - 1
+                colTop= cellColumn + 1
                 for curRow in [rowBot..rowTop]
                     for curColumn in [colBot..colTop]
-                        continue if curRow is cell.row and curColumn is cell.column
+                        continue if curRow is cellRow and curColumn is cellColumn
 
                         row = curRow
                         column = curColumn
@@ -217,21 +267,16 @@ define(["lib/backbone"], (Backbone)->
                         else if column > (numberOfColumns - 1)
                             column = 0
                         
-                        #Found a neighbor
-                        if @model.get('currentCellGeneration')[row][column].isAlive
-                            numAliveNeighbors += 1
-
+                        neighbors[@model.get('currentCellGeneration')[row][column].get('state')] += 1
             else
                 #This is the simpler method, but it cuts off the edges
                 for row in [lowerRowBound..upperRowBound]
                     for column in [lowerColumnBound..upperColumnBound]
                         #Skip itself
-                        continue if row is cell.row and column is cell.column
-                        if @model.get('currentCellGeneration')[row][column].isAlive
-                            numAliveNeighbors += 1
+                        continue if row is cellRow and column is cellColumn
+                        neighbors[@model.get('currentCellGeneration')[row][column].get('state')] += 1
 
-
-            return numAliveNeighbors
+            return neighbors
 
     return World
 )
