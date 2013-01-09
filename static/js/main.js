@@ -11,13 +11,10 @@
     }
   });
 
-  require(["jquery", "models/world", "views/world", "views/app"], function($, worldModel, worldView, appView) {
-    var app, game, gameView;
-    app = new appView();
-    game = new worldModel();
-    gameView = new worldView({
-      model: game
-    });
+  require(["jquery", "models/world", "models/world-object", "views/world", "views/app"], function($, World, world, WorldView, AppView) {
+    var app, gameView;
+    app = new AppView();
+    gameView = new WorldView({});
     return gameView.render();
   });
 

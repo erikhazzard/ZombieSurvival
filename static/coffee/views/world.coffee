@@ -3,7 +3,7 @@
 # game - world view 
 #
 # ===========================================================================
-define(["lib/backbone", "models/cell", "models/entity", "events"], (Backbone, Cell, Entity, events)->
+define(["lib/backbone", "models/cell", "models/entity", "models/world-object", "events"], (Backbone, Cell, Entity, world, events)->
     class World extends Backbone.View
         #====================================
         #
@@ -24,6 +24,10 @@ define(["lib/backbone", "models/cell", "models/entity", "events"], (Backbone, Ce
             #size (in px) of each cell
             @cellSize = 8
 
+            #tick meta
+            @numTicks = 0
+            @lastTick = new Date()
+
             #TODO: Check world size
             
             #Listen for camera move events
@@ -38,10 +42,10 @@ define(["lib/backbone", "models/cell", "models/entity", "events"], (Backbone, Ce
                 newY = @camera.y + y
 
                 #Can't go below 0 and above bounds of world
-                if newX >= 0 and (newX + @camera.size) <= (@model.get('numberOfColumns'))
+                if newX >= 0 and (newX + @camera.size) <= (world.get('numberOfColumns'))
                     @camera.x = newX
 
-                if newY >= 0 and (newY + @camera.size) <= (@model.get('numberOfRows'))
+                if newY >= 0 and (newY + @camera.size) <= (world.get('numberOfRows'))
                     @camera.y = newY
                 
                 return @camera
@@ -53,8 +57,14 @@ define(["lib/backbone", "models/cell", "models/entity", "events"], (Backbone, Ce
             @createCanvas()
             @resizeCanvas()
             @createDrawingContext()
-            @seed()
-            @setupEntities()
+            
+            #Entities
+            world.addEntity(new Entity())
+
+            #Setup the initial grid
+            @drawGrid()
+
+            #Game tick
             @tick()
             return @
 
@@ -67,7 +77,7 @@ define(["lib/backbone", "models/cell", "models/entity", "events"], (Backbone, Ce
             if @camera and @camera.size
                 cameraSize = @camera.size
             else
-                cameraSize = @model.get('numberOfColumns')
+                cameraSize = world.get('numberOfColumns')
             @canvas.width = @cellSize * cameraSize
             @canvas.height = @cellSize * cameraSize
 
@@ -83,51 +93,18 @@ define(["lib/backbone", "models/cell", "models/entity", "events"], (Backbone, Ce
             #Tick function - called at every time interval to update
             #  the world
             requestAnimFrame(@tick)
+
             @drawGrid()
+            @drawItems()
             @updateEntities()
-            return @
 
-        #--------------------------------
-        #Initialize world
-        #--------------------------------
-        seed: ()->
-            currentCellGeneration = []
-            for row in [0...@model.get('numberOfRows')]
-                currentCellGeneration[row] = []
-                for column in [0...@model.get('numberOfColumns')]
-                    seedCell = @createSeedCell(row, column)
-                    currentCellGeneration[row][column] = seedCell
-            
-            #Update the model
-            @model.set('currentCellGeneration', currentCellGeneration)
-
-            #Add entities
-            return @
-
-        createSeedCell: (row, column)->
-            #This sets up the initial state of the world
-            if Math.random() < @model.get('seedProbability')
-                state = 'resource'
-            else
-                state = 'empty'
-
-            if Math.random() < (@model.get('seedProbability') / 10)
-                state = 'weapon'
-            if Math.random() < (@model.get('seedProbability') / 12)
-                state = 'shelter'
-
-            color = Cell.prototype.getColor(state)
-            cell = new Cell({
-                state: state
-                color: color
-                row: row
-                column: column
-            })
-            return cell
-
-        setupEntities: ()->
-            #Create entities in the world ( humans, zombies )
-            @model.set({ entities: [ new Entity() ] })
+            if @numTicks > 10
+                @numTicks = 0
+                console.log('time for 100 ticks: ' + (
+                    (new Date().getTime() - @lastTick.getTime()) / 1000)
+                )
+                @lastTick = new Date()
+            @numTicks += 1
 
             return @
         
@@ -140,26 +117,43 @@ define(["lib/backbone", "models/cell", "models/entity", "events"], (Backbone, Ce
             #Draw each cell
             cameraColumn = 0
             cameraRow = 0
+            cells = world.get('cells')
 
             for row in [@camera.y...@camera.size+@camera.y]
                 #Reset column back to 0
                 cameraColumn = 0
                 for column in [@camera.x...@camera.size+@camera.x]
-                    @drawCell(@model.get('currentCellGeneration')[row][column],
+                    @drawObject(cells[row][column],
                         { x: cameraColumn, y: cameraRow })
                     cameraColumn += 1
 
                 cameraRow += 1
             return true
 
-        drawCell: (cell, position)->
+        #--------------------------------
+        #items
+        #--------------------------------
+        drawItems: ()->
+            items = world.get('items')
+            for item in items
+                x = item.get('position').x - @camera.x
+                y = item.get('position').y - @camera.y
+                if (x >= 0 and x <= @camera.size) and (y >= 0 and y <= @camera.size)
+                    @drawObject(item, {x: x, y:y })
+
+            return @
+
+        #--------------------------------
+        #draw object helper
+        #--------------------------------
+        drawObject: (targetObject, position)->
             #Draws a cell with canvas
 
             #Calculate x / y, draw cells
             x = position.x * @cellSize
             y = position.y * @cellSize
             #use the cell's color
-            fillStyle = cell.get('color')
+            fillStyle = targetObject.get('color')
             
             #draw the cell
             @drawingContext.strokeStyle = 'rgb(100,100,100)'
@@ -176,35 +170,34 @@ define(["lib/backbone", "models/cell", "models/entity", "events"], (Backbone, Ce
         #--------------------------------
         #This is where the bulk of our game logic lies
         updateEntities: ()->
-            generationNum = @model.get('generationNum')
-            @model.set('generationNum', generationNum + 1)
+            generationNum = world.get('generationNum')
+            world.set('generationNum', generationNum + 1)
 
             #Loop through all entities ( humans and zombies )
             #  Do this on a copy of entities to avoid collisons
             newEntities = []
-            entities = @model.get('entities')
-
-            for entity in entities
-                newEntity = @updateEntity(
-                    entity
-                )
-                newEntities.push(newEntity)
-
-            #update the entities
-            @model.set({'entities': newEntities})
+            entities = world.get('entities')
 
             @drawEntities()
-            return @
 
-        updateEntity: (entity)->
-            return entity
+            #Update the entity's position
+            for key, entityTypes of entities
+                for entity in entityTypes
+                    entity.tick()
+
+            return @
 
         drawEntities: ()->
             #Draws the entities
-            entities = @model.get('entities')
-            
-            for entity in entities
-                @drawCell(entity, entity.get('position'))
+            entities = world.get('entities')
+            for key, entityTypes of entities
+                for entity in entityTypes
+                    #Only draw entities that are in range of the camera
+                    x = entity.get('position').x - @camera.x
+                    y = entity.get('position').y - @camera.y
+                    if (x >= 0 and x <= @camera.size) and (y >= 0 and y <= @camera.size)
+                        @drawObject(entity, {x: x, y:y })
+
             return @
 
     return World

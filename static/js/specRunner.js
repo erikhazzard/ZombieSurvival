@@ -17,7 +17,7 @@
     should = chai.should();
     expect = chai.expect;
     mocha.setup('bdd');
-    return require(['spec/model-world', 'spec/view-world'], function() {
+    return require(['spec/model-world', 'spec/view-world', 'spec/model-entity'], function() {
       return mocha.run();
     });
   });

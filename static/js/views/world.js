@@ -3,7 +3,7 @@
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
-  define(["lib/backbone", "models/cell", "models/entity", "events"], function(Backbone, Cell, Entity, events) {
+  define(["lib/backbone", "models/cell", "models/entity", "models/world-object", "events"], function(Backbone, Cell, Entity, world, events) {
     var World;
     World = (function(_super) {
 
@@ -23,16 +23,18 @@
           size: 50
         };
         this.cellSize = 8;
+        this.numTicks = 0;
+        this.lastTick = new Date();
         events.on('camera:move', function(xyDelta) {
           var newX, newY, x, y;
           x = xyDelta.x || 0;
           y = xyDelta.y || 0;
           newX = _this.camera.x + x;
           newY = _this.camera.y + y;
-          if (newX >= 0 && (newX + _this.camera.size) <= (_this.model.get('numberOfColumns'))) {
+          if (newX >= 0 && (newX + _this.camera.size) <= (world.get('numberOfColumns'))) {
             _this.camera.x = newX;
           }
-          if (newY >= 0 && (newY + _this.camera.size) <= (_this.model.get('numberOfRows'))) {
+          if (newY >= 0 && (newY + _this.camera.size) <= (world.get('numberOfRows'))) {
             _this.camera.y = newY;
           }
           return _this.camera;
@@ -44,8 +46,8 @@
         this.createCanvas();
         this.resizeCanvas();
         this.createDrawingContext();
-        this.seed();
-        this.setupEntities();
+        world.addEntity(new Entity());
+        this.drawGrid();
         this.tick();
         return this;
       };
@@ -60,7 +62,7 @@
         if (this.camera && this.camera.size) {
           cameraSize = this.camera.size;
         } else {
-          cameraSize = this.model.get('numberOfColumns');
+          cameraSize = world.get('numberOfColumns');
         }
         this.canvas.width = this.cellSize * cameraSize;
         return this.canvas.height = this.cellSize * cameraSize;
@@ -73,62 +75,26 @@
       World.prototype.tick = function() {
         requestAnimFrame(this.tick);
         this.drawGrid();
+        this.drawItems();
         this.updateEntities();
-        return this;
-      };
-
-      World.prototype.seed = function() {
-        var column, currentCellGeneration, row, seedCell, _ref, _ref2;
-        currentCellGeneration = [];
-        for (row = 0, _ref = this.model.get('numberOfRows'); 0 <= _ref ? row < _ref : row > _ref; 0 <= _ref ? row++ : row--) {
-          currentCellGeneration[row] = [];
-          for (column = 0, _ref2 = this.model.get('numberOfColumns'); 0 <= _ref2 ? column < _ref2 : column > _ref2; 0 <= _ref2 ? column++ : column--) {
-            seedCell = this.createSeedCell(row, column);
-            currentCellGeneration[row][column] = seedCell;
-          }
+        if (this.numTicks > 10) {
+          this.numTicks = 0;
+          console.log('time for 100 ticks: ' + ((new Date().getTime() - this.lastTick.getTime()) / 1000));
+          this.lastTick = new Date();
         }
-        this.model.set('currentCellGeneration', currentCellGeneration);
-        return this;
-      };
-
-      World.prototype.createSeedCell = function(row, column) {
-        var cell, color, state;
-        if (Math.random() < this.model.get('seedProbability')) {
-          state = 'resource';
-        } else {
-          state = 'empty';
-        }
-        if (Math.random() < (this.model.get('seedProbability') / 10)) {
-          state = 'weapon';
-        }
-        if (Math.random() < (this.model.get('seedProbability') / 12)) {
-          state = 'shelter';
-        }
-        color = Cell.prototype.getColor(state);
-        cell = new Cell({
-          state: state,
-          color: color,
-          row: row,
-          column: column
-        });
-        return cell;
-      };
-
-      World.prototype.setupEntities = function() {
-        this.model.set({
-          entities: [new Entity()]
-        });
+        this.numTicks += 1;
         return this;
       };
 
       World.prototype.drawGrid = function() {
-        var cameraColumn, cameraRow, column, row, _ref, _ref2, _ref3, _ref4;
+        var cameraColumn, cameraRow, cells, column, row, _ref, _ref2, _ref3, _ref4;
         cameraColumn = 0;
         cameraRow = 0;
+        cells = world.get('cells');
         for (row = _ref = this.camera.y, _ref2 = this.camera.size + this.camera.y; _ref <= _ref2 ? row < _ref2 : row > _ref2; _ref <= _ref2 ? row++ : row--) {
           cameraColumn = 0;
           for (column = _ref3 = this.camera.x, _ref4 = this.camera.size + this.camera.x; _ref3 <= _ref4 ? column < _ref4 : column > _ref4; _ref3 <= _ref4 ? column++ : column--) {
-            this.drawCell(this.model.get('currentCellGeneration')[row][column], {
+            this.drawObject(cells[row][column], {
               x: cameraColumn,
               y: cameraRow
             });
@@ -139,11 +105,28 @@
         return true;
       };
 
-      World.prototype.drawCell = function(cell, position) {
+      World.prototype.drawItems = function() {
+        var item, items, x, y, _i, _len;
+        items = world.get('items');
+        for (_i = 0, _len = items.length; _i < _len; _i++) {
+          item = items[_i];
+          x = item.get('position').x - this.camera.x;
+          y = item.get('position').y - this.camera.y;
+          if ((x >= 0 && x <= this.camera.size) && (y >= 0 && y <= this.camera.size)) {
+            this.drawObject(item, {
+              x: x,
+              y: y
+            });
+          }
+        }
+        return this;
+      };
+
+      World.prototype.drawObject = function(targetObject, position) {
         var fillStyle, x, y;
         x = position.x * this.cellSize;
         y = position.y * this.cellSize;
-        fillStyle = cell.get('color');
+        fillStyle = targetObject.get('color');
         this.drawingContext.strokeStyle = 'rgb(100,100,100)';
         this.drawingContext.strokeRect(x, y, this.cellSize, this.cellSize);
         this.drawingContext.fillStyle = fillStyle;
@@ -152,33 +135,38 @@
       };
 
       World.prototype.updateEntities = function() {
-        var entities, entity, generationNum, newEntities, newEntity, _i, _len;
-        generationNum = this.model.get('generationNum');
-        this.model.set('generationNum', generationNum + 1);
+        var entities, entity, entityTypes, generationNum, key, newEntities, _i, _len;
+        generationNum = world.get('generationNum');
+        world.set('generationNum', generationNum + 1);
         newEntities = [];
-        entities = this.model.get('entities');
-        for (_i = 0, _len = entities.length; _i < _len; _i++) {
-          entity = entities[_i];
-          newEntity = this.updateEntity(entity);
-          newEntities.push(newEntity);
-        }
-        this.model.set({
-          'entities': newEntities
-        });
+        entities = world.get('entities');
         this.drawEntities();
+        for (key in entities) {
+          entityTypes = entities[key];
+          for (_i = 0, _len = entityTypes.length; _i < _len; _i++) {
+            entity = entityTypes[_i];
+            entity.tick();
+          }
+        }
         return this;
       };
 
-      World.prototype.updateEntity = function(entity) {
-        return entity;
-      };
-
       World.prototype.drawEntities = function() {
-        var entities, entity, _i, _len;
-        entities = this.model.get('entities');
-        for (_i = 0, _len = entities.length; _i < _len; _i++) {
-          entity = entities[_i];
-          this.drawCell(entity, entity.get('position'));
+        var entities, entity, entityTypes, key, x, y, _i, _len;
+        entities = world.get('entities');
+        for (key in entities) {
+          entityTypes = entities[key];
+          for (_i = 0, _len = entityTypes.length; _i < _len; _i++) {
+            entity = entityTypes[_i];
+            x = entity.get('position').x - this.camera.x;
+            y = entity.get('position').y - this.camera.y;
+            if ((x >= 0 && x <= this.camera.size) && (y >= 0 && y <= this.camera.size)) {
+              this.drawObject(entity, {
+                x: x,
+                y: y
+              });
+            }
+          }
         }
         return this;
       };

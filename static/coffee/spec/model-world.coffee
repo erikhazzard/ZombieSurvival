@@ -1,9 +1,9 @@
 #========================================
 #TEST - Model - World
 #========================================
-define(['models/world', 'events'], (World, events)->
-   describe('World Model: Default Params', ()->
-        world = new World({})
+define(['models/world', 'models/world-object', 'events'], (World, world, events)->
+    #NOTE: Here we're using the singleton, but we could create a new world object
+    describe('World Model: Default Params', ()->
         it('should have default param: rules', ()->
             world.get('rules').stayAlive.should.not.equal(undefined)
             world.get('rules').birth.should.not.equal(undefined)
@@ -11,7 +11,6 @@ define(['models/world', 'events'], (World, events)->
 
     )
     describe('World Model: updateRules', ()->
-        world = new World({})
         it('should return false if nothing is passed in', ()->
             world.updateRules().should.equal(false)
         )
@@ -67,7 +66,6 @@ define(['models/world', 'events'], (World, events)->
     )
 
     describe('World Model: updateRules', ()->
-        world = new World({})
         it('should repond to world:model:changeRuleString"', ()->
             world.set({'rules': { stayAlive: [2,3], birth: [3] }})
             events.trigger('world:model:changeRuleString', '1/1')

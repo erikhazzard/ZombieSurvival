@@ -20,14 +20,10 @@ requirejs.config({
 #========================================
 #Set everything up
 #========================================
-require(["jquery", "models/world", "views/world", "views/app"], ($, worldModel, worldView, appView)->
+require(["jquery", "models/world", "models/world-object", "views/world", "views/app"], ($, World, world, WorldView, AppView)->
     #app setup
-    app = new appView()
+    app = new AppView()
 
-    #game setup
-    game = new worldModel()
-    gameView = new worldView({
-        model: game
-    })
+    gameView = new WorldView({ })
     gameView.render()
 )

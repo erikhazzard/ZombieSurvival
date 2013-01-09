@@ -1,17 +1,13 @@
 (function() {
 
-  define(['models/world', 'events'], function(World, events) {
+  define(['models/world', 'models/world-object', 'events'], function(World, world, events) {
     describe('World Model: Default Params', function() {
-      var world;
-      world = new World({});
       return it('should have default param: rules', function() {
         world.get('rules').stayAlive.should.not.equal(void 0);
         return world.get('rules').birth.should.not.equal(void 0);
       });
     });
     describe('World Model: updateRules', function() {
-      var world;
-      world = new World({});
       it('should return false if nothing is passed in', function() {
         return world.updateRules().should.equal(false);
       });
@@ -82,8 +78,6 @@
       });
     });
     return describe('World Model: updateRules', function() {
-      var world;
-      world = new World({});
       return it('should repond to world:model:changeRuleString"', function() {
         world.set({
           'rules': {

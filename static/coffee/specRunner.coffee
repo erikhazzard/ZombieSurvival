@@ -21,7 +21,7 @@ require(['require', 'lib/chai', 'lib/mocha'], (require,chai)->
     mocha.setup('bdd')
 
     #Tests go here
-    require(['spec/model-world', 'spec/view-world'], ()->
+    require(['spec/model-world', 'spec/view-world', 'spec/model-entity'], ()->
         #Start runner
         mocha.run()
     )

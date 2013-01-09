@@ -13,18 +13,28 @@
       }
 
       Cell.prototype.defaults = {
-        isAlive: true,
-        color: 'rgb(125,125,125)',
-        state: 'empty'
+        state: 'empty',
+        occupied: false,
+        position: {
+          x: 0,
+          y: 0
+        },
+        weight: 1,
+        color: 'rgb(100,220,100)'
+      };
+
+      Cell.prototype.initialize = function() {
+        return this.on('change:state', function(state) {
+          return this.set({
+            color: this.getColor(state)
+          });
+        });
       };
 
       Cell.prototype.getColor = function(state) {
         var colors;
         colors = {
-          empty: "rgb(125,125,125)",
-          resource: "rgb(100,220,100)",
-          weapon: "rgb(100,150,200)",
-          shelter: "rgb(50,50,50)"
+          empty: "rgb(100,220,100)"
         };
         return colors[state];
       };

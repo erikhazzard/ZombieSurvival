@@ -1,10 +1,9 @@
 
-define(['views/world'], function(World) {
-  return describe('World model', function() {
-    return it('should have some default parameters', function() {
-      var world;
-      console.log(World);
-      return world = new World({});
+define(['views/world', 'models/world-object'], function(World, world) {
+  world = new World({});
+  return describe('World View', function() {
+    return it('should exist', function() {
+      return world.should.not.equal(void 0);
     });
   });
 });
