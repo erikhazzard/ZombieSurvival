@@ -93,7 +93,7 @@
         } else {
           state = 'dead';
         }
-        if (Math.random() < (this.model.get('seedProbability') / 12)) {
+        if (Math.random() < (this.model.get('seedProbability') / 4)) {
           state = 'zombie';
         }
         return new Cell({
@@ -133,7 +133,7 @@
       };
 
       World.prototype.evolveCell = function(cell) {
-        var evolvedCell, neighbors, state;
+        var evolvedCell, neighbors, state, _ref;
         evolvedCell = new Cell({
           row: cell.get('row'),
           column: cell.get('column'),
@@ -141,35 +141,31 @@
         });
         neighbors = this.countNeighbors(cell);
         state = cell.get('state');
-        if (cell.get('state') === 'alive') {
-          state = 'alive';
-          if (Math.random() < 0.005) state = 'zombie';
-        }
-        if (cell.get('state') === 'dead' && neighbors.alive > 2) {
-          if (Math.random() < ((0.1 * neighbors.alive) - (0.05 * neighbors.zombie))) {
-            state = 'alive';
-          }
-        }
-        if (cell.get('state') === 'alive' && neighbors.zombie > 0) {
-          if (Math.random() < ((0.2 * neighbors.zombie) - (0.12 * neighbors.human))) {
-            state = 'zombie';
-          }
-        }
         if (cell.get('state') === 'zombie') {
-          if (Math.random() > 0.01) {
+          if (neighbors.alive > 1) {
             state = 'zombie';
           } else {
             state = 'dead';
           }
-        }
-        if (cell.get('state') === 'zombie') {
-          if (Math.random() < ((0.2 * neighbors.alive) - (0.25 * neighbors.zombies))) {
+        } else if (cell.get('state') === 'alive') {
+          if ((5 > (_ref = neighbors.zombie) && _ref > 0)) {
             state = 'dead';
-          }
-        }
-        if (cell.get('state') === 'dead') {
-          if (Math.random() < ((neighbors.zombie * 0.2) - (neighbors.alive * 0.1))) {
+          } else if (neighbors.zombie > 4) {
             state = 'zombie';
+          } else if (neighbors.alive > 7) {
+            state = 'alive';
+          }
+        } else if (cell.get('state') === 'dead') {
+          if (neighbors.alive > neighbors.zombie) {
+            state = 'alive';
+          } else if (neighbors.zombie > (neighbors.alive - 1)) {
+            if (neighbors.alive > 0) {
+              state = 'zombie';
+            } else {
+              state = 'dead';
+            }
+          } else {
+            state = 'dead';
           }
         }
         evolvedCell.set({

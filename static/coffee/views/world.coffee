@@ -82,7 +82,7 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
                 state = 'dead'
 
             #Seed some zombies - TODO, should be player controlled?
-            if Math.random() < (@model.get('seedProbability') / 12)
+            if Math.random() < (@model.get('seedProbability') / 4 )
                 state = 'zombie'
 
             return new Cell({
@@ -94,6 +94,7 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
         tick: ()=>
             #Tick function - called at every time interval to update
             #  the world
+            #setTimeout(@tick, 2000)
             requestAnimFrame(@tick)
             @drawGrid()
             @updateCurrentGeneration()
@@ -148,49 +149,30 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
             #Previous state is maintained by default
             state = cell.get('state')
 
-            #Check for human
-            #----------------------------
-            if (cell.get('state') == 'alive') #(@model.get('rules').stayAlive.indexOf(neighbors.alive) > -1)
-                #If it's already alive, check to see if it should stay alive
-                state = 'alive'
-                #Human die of old age, add in some probaility of them turning 
-                if Math.random() < 0.005
-                    state = 'zombie'
-
-            #BIRTH (human)
-            if cell.get('state') == 'dead' and neighbors.alive > 2
-                #Birth probability
-                if Math.random() < ( ( 0.1 * neighbors.alive) - (0.05 * neighbors.zombie))
-                    #If it wasn't alive, check for birth
-                    state = 'alive'
-
-            #Check for zombie
-            #----------------------------
-            if cell.get('state') == 'alive' and neighbors.zombie > 0
-                #Chance of turning into zombie is based on neighboring
-                #  zombies AND how many humans are around you
-                if Math.random() < ( (0.2 * neighbors.zombie) - (0.12 * neighbors.human) )
-                    state = 'zombie'
-
+            #Human
             if cell.get('state') == 'zombie'
-                #Zombies decay, so there is a small chance the zombie will die
-                if Math.random() > 0.01
+                if neighbors.alive > 1
                     state = 'zombie'
                 else
                     state = 'dead'
-
-            #Check for zombies being killed by humans
-            if cell.get('state') == 'zombie'
-                if Math.random() < ((0.2 * neighbors.alive) - (0.25 * neighbors.zombies) )
+            else if cell.get('state') == 'alive'
+                if 5 > neighbors.zombie > 0
                     state = 'dead'
-
-            #Check for 'movement' (zombie or human)
-            #----------------------------
-            #Need to move the neighbor...
-            #birth of zombie
-            if cell.get('state') == 'dead'
-                if Math.random() < ( (neighbors.zombie * 0.2) - ( neighbors.alive * 0.1) )
+                else if neighbors.zombie > 4
                     state = 'zombie'
+                else if neighbors.alive > 7
+                    state = 'alive'
+            else if cell.get('state') == 'dead'
+                if neighbors.alive > neighbors.zombie
+                    state = 'alive'
+                else if neighbors.zombie > (neighbors.alive - 1)
+                    if neighbors.alive > 0
+                        state = 'zombie'
+                    else
+                        state = 'dead'
+                else
+                    state = 'dead'
+                
 
             #Set updated cell
             #----------------------------
