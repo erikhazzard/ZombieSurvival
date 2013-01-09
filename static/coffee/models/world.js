@@ -21,10 +21,10 @@ define(["lib/backbone", "events"], function(Backbone, events) {
       tickLength: 100,
       generationNum: 0,
       cellSize: 12,
-      numberOfRows: 20,
-      numberOfColumns: 20,
+      numberOfRows: 40,
+      numberOfColumns: 40,
       seedProbability: 0.08,
-      zombieProbability: 0.02,
+      zombieProbability: 0.03,
       rules: {
         stayAlive: [2, 3],
         birth: [3]

@@ -15,7 +15,25 @@
       Cell.prototype.defaults = {
         isAlive: true,
         color: 'rgba(100,150,200,0.8)',
-        state: 'alive'
+        state: 'alive',
+        health: 100
+      };
+
+      Cell.prototype.initialize = function() {
+        return this.on('change:state', function(state) {
+          var health;
+          health = 0;
+          if (state === 'alive') {
+            health = 100;
+          } else if (state === 'zombie') {
+            health = 40;
+          } else {
+            health = 0;
+          }
+          return this.set({
+            health: health
+          });
+        });
       };
 
       Cell.prototype.getColor = function(state) {

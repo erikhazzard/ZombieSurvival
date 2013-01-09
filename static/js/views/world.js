@@ -144,45 +144,33 @@
         state = cell.get('state');
         health = cell.get('health');
         if (cell.get('state') === 'zombie') {
-          if (neighbors.alive >= 4) {
-            state = 'dead';
-          } else if (neighbors.alive < 4) {
-            state = 'zombie';
-          }
-          if (state === 'zombie') {
-            health = health - 5;
+          if (neighbors.zombie >= neighbors.alive) {
+            health = health + (neighbors.alive * 3.5);
           } else {
-            health = 0;
+            health = health - (neighbors.alive * 1.5);
           }
+          if (state === 'zombie') health = health - 5;
+          if (health < 0) state = 'dead';
         } else if (cell.get('state') === 'alive') {
-          if (neighbors.zombie > neighbors.alive) {
-            if (Math.random() < (0.2 + (neighbors.zombie / 20))) state = 'zombie';
-            if (neighbors.zombie > 6 && Math.random() < 0.9) state = 'zombie';
+          if (neighbors.zombie) {
+            health = health - (neighbors.zombie * neighbors.zombie);
           }
-          if (Math.random() < 0.07) {
-            if (neighbors.alive < 4) {
+          if (neighbors.human > 7) if (Math.random() < 0.5) state = 'dead';
+          if (state === 'alive') health = health - 0.5;
+          if (health < 0) {
+            if (neighbors.alive < 5) {
               state = 'zombie';
             } else {
               state = 'dead';
             }
           }
-          if (neighbors.human > 7) if (Math.random() < 0.7) state = 'dead';
-          if (state === 'alive') {
-            health = health - 5;
-          } else if (state === 'zombie') {
-            health = 40;
-          }
         } else if (cell.get('state') === 'dead') {
           if (neighbors.alive > neighbors.zombie) {
-            if (Math.random() < (0.01 + (neighbors.alive / 40))) {
-              state = 'alive';
-              health = 100;
-            }
+            if (Math.random() < (0.04 + (neighbors.alive / 20))) state = 'alive';
           } else {
             state = 'dead';
           }
         }
-        if (health < 0) state = 'dead';
         evolvedCell.set({
           state: state,
           health: health,

@@ -12,7 +12,22 @@ define(["lib/backbone"], (Backbone)->
             #state can be 
             #  alive, dead, or zombie
             state: 'alive'
+            health: 100
         }
+
+        initialize: ()->
+            #When the state changes, change health based on state
+            @on('change:state', (state)->
+                health = 0
+                if state == 'alive'
+                    health = 100
+                else if state == 'zombie'
+                    health = 40
+                else
+                    health = 0
+
+                @set({ health: health })
+            )
         getColor: (state)->
             colors = {
                 alive: "rgb(100,220,100)"
