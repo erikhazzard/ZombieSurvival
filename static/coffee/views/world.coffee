@@ -82,7 +82,7 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
                 state = 'dead'
 
             #Seed some zombies - TODO, should be player controlled?
-            if Math.random() < (@model.get('seedProbability') / 4 )
+            if Math.random() < (@model.get('zombieProbability') / 4 )
                 state = 'zombie'
 
             return new Cell({
@@ -149,27 +149,33 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
             #Previous state is maintained by default
             state = cell.get('state')
 
-            #Human
+            #ZOMBIES
             if cell.get('state') == 'zombie'
-                if neighbors.alive > 1
-                    state = 'zombie'
-                else
+                if neighbors.alive >= 4
                     state = 'dead'
+                else if (neighbors.alive < 4)
+                    state = 'zombie'
+
+                    #Also, zombies decay so there is a small chance it will just die
+                    if Math.random() < 0.05
+                        state = 'dead'
+
+            #HUMANS
             else if cell.get('state') == 'alive'
-                if 5 > neighbors.zombie > 0
-                    state = 'dead'
-                else if neighbors.zombie > 4
+                if neighbors.zombie > neighbors.alive
+                    if Math.random() < 0.5
+                        state = 'zombie'
+
+                #Humans die of old age
+                if Math.random() < 0.05
                     state = 'zombie'
-                else if neighbors.alive > 7
-                    state = 'alive'
+
+            #DEAD / EMPTY
             else if cell.get('state') == 'dead'
                 if neighbors.alive > neighbors.zombie
-                    state = 'alive'
-                else if neighbors.zombie > (neighbors.alive - 1)
-                    if neighbors.alive > 0
-                        state = 'zombie'
-                    else
-                        state = 'dead'
+                    #chance for birth
+                    if Math.random() < 0.05
+                        state = 'alive'
                 else
                     state = 'dead'
                 

@@ -93,7 +93,7 @@
         } else {
           state = 'dead';
         }
-        if (Math.random() < (this.model.get('seedProbability') / 4)) {
+        if (Math.random() < (this.model.get('zombieProbability') / 4)) {
           state = 'zombie';
         }
         return new Cell({
@@ -133,7 +133,7 @@
       };
 
       World.prototype.evolveCell = function(cell) {
-        var evolvedCell, neighbors, state, _ref;
+        var evolvedCell, neighbors, state;
         evolvedCell = new Cell({
           row: cell.get('row'),
           column: cell.get('column'),
@@ -142,28 +142,20 @@
         neighbors = this.countNeighbors(cell);
         state = cell.get('state');
         if (cell.get('state') === 'zombie') {
-          if (neighbors.alive > 1) {
-            state = 'zombie';
-          } else {
+          if (neighbors.alive >= 4) {
             state = 'dead';
+          } else if (neighbors.alive < 4) {
+            state = 'zombie';
+            if (Math.random() < 0.05) state = 'dead';
           }
         } else if (cell.get('state') === 'alive') {
-          if ((5 > (_ref = neighbors.zombie) && _ref > 0)) {
-            state = 'dead';
-          } else if (neighbors.zombie > 4) {
-            state = 'zombie';
-          } else if (neighbors.alive > 7) {
-            state = 'alive';
+          if (neighbors.zombie > neighbors.alive) {
+            if (Math.random() < 0.5) state = 'zombie';
           }
+          if (Math.random() < 0.05) state = 'zombie';
         } else if (cell.get('state') === 'dead') {
           if (neighbors.alive > neighbors.zombie) {
-            state = 'alive';
-          } else if (neighbors.zombie > (neighbors.alive - 1)) {
-            if (neighbors.alive > 0) {
-              state = 'zombie';
-            } else {
-              state = 'dead';
-            }
+            if (Math.random() < 0.05) state = 'alive';
           } else {
             state = 'dead';
           }

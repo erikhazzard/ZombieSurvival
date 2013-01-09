@@ -14,9 +14,10 @@ define(["lib/backbone", "events"], (Backbone, events)->
             generationNum: 0
 
             cellSize: 12
-            numberOfRows: 50
-            numberOfColumns: 50
-            seedProbability: 0.1
+            numberOfRows: 42
+            numberOfColumns: 42
+            seedProbability: 0.08
+            zombieProbability: 0.02
             #Default - 23/3
             rules: {
                 stayAlive: [2,3],
