@@ -14,8 +14,8 @@ define(["lib/backbone", "events"], (Backbone, events)->
             generationNum: 0
 
             cellSize: 12
-            numberOfRows: 42
-            numberOfColumns: 42
+            numberOfRows: 20
+            numberOfColumns: 20
             seedProbability: 0.08
             zombieProbability: 0.02
             #Default - 23/3

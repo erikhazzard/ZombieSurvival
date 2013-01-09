@@ -134,6 +134,7 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
                 row: cell.get('row')
                 column: cell.get('column')
                 state: cell.get('state')
+                health: cell.get('health')
             })
             neighbors = @countNeighbors(cell)
 
@@ -148,6 +149,7 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
 
             #Previous state is maintained by default
             state = cell.get('state')
+            health = cell.get('health')
 
             #ZOMBIES
             if cell.get('state') == 'zombie'
@@ -156,34 +158,56 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
                 else if (neighbors.alive < 4)
                     state = 'zombie'
 
-                    #Also, zombies decay so there is a small chance it will just die
-                    if Math.random() < 0.05
-                        state = 'dead'
+                if state == 'zombie'
+                    health = health - 5
+                else
+                    health = 0
 
             #HUMANS
             else if cell.get('state') == 'alive'
                 if neighbors.zombie > neighbors.alive
-                    if Math.random() < 0.5
+                    if Math.random() < (0.2 + (neighbors.zombie / 20))
+                        state = 'zombie'
+                    if neighbors.zombie > 6 and Math.random() < 0.9
                         state = 'zombie'
 
                 #Humans die of old age
-                if Math.random() < 0.05
-                    state = 'zombie'
+                if Math.random() < 0.07
+                    if neighbors.alive < 4
+                        state = 'zombie'
+                    else
+                        state = 'dead'
+
+                #If there's too many humans, resources are scarce and they
+                #  die / turn to zombie / but people kill zombie
+                if neighbors.human > 7
+                    if Math.random() < 0.7
+                        state = 'dead'
+
+                #update health if we're still alive
+                if state == 'alive'
+                    health = health - 5
+                else if state == 'zombie'
+                    health = 40
 
             #DEAD / EMPTY
             else if cell.get('state') == 'dead'
                 if neighbors.alive > neighbors.zombie
                     #chance for birth
-                    if Math.random() < 0.05
+                    if Math.random() < (0.01 + (neighbors.alive / 40))
                         state = 'alive'
+                        health = 100
                 else
                     state = 'dead'
                 
+            if health < 0
+                state = 'dead'
 
             #Set updated cell
             #----------------------------
             evolvedCell.set({
                 state: state
+                health: health
                 color: cell.getColor( state )
             })
 

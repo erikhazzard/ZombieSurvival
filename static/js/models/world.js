@@ -22,8 +22,8 @@
         tickLength: 100,
         generationNum: 0,
         cellSize: 12,
-        numberOfRows: 42,
-        numberOfColumns: 42,
+        numberOfRows: 20,
+        numberOfColumns: 20,
         seedProbability: 0.08,
         zombieProbability: 0.02,
         rules: {
