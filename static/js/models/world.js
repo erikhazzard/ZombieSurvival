@@ -21,12 +21,12 @@
         drawingContext: null,
         tickLength: 100,
         generationNum: 0,
-        cellSize: 12,
-        numberOfRows: 30,
-        numberOfColumns: 30,
+        cellSize: 38,
+        numberOfRows: 24,
+        numberOfColumns: 24,
         seedProbability: 0.08,
-        zombieProbability: 0.01,
-        resourceProbability: 0.0005,
+        zombieProbability: 0.03,
+        resourceProbability: 0.001,
         rules: {
           stayAlive: [2, 3],
           birth: [3]

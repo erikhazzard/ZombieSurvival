@@ -15,10 +15,9 @@
     var app, game, gameView;
     app = new appView();
     game = new worldModel();
-    gameView = new worldView({
+    return gameView = new worldView({
       model: game
     });
-    return gameView.render();
   });
 
 }).call(this);

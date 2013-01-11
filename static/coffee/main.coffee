@@ -29,5 +29,6 @@ require(["jquery", "models/world", "views/world", "views/app"], ($, worldModel, 
     gameView = new worldView({
         model: game
     })
-    gameView.render()
+
+    #Note: render gets called in initailize
 )

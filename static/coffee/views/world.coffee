@@ -13,6 +13,22 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
         initialize: ()->
             #Properties we'll use later
             @canvas = null
+            #images
+            @img = {}
+            @img.zombie = new Image()
+            @img.zombie.src = '/static/img/zombie.png'
+            @img.alive= new Image()
+            @img.alive.src = '/static/img/alive.png'
+            @img.alive2 = new Image()
+            @img.alive2.src = '/static/img/alive2.png'
+            @img.resource = new Image()
+            @img.resource.src = '/static/img/resource.png'
+            @img.dead = new Image()
+            @img.dead.src = '/static/img/dead.png'
+
+            @img.dead.onload = ()=>
+                @render()
+
             return @
 
         render: ()->
@@ -120,11 +136,22 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
             y = cell.get('row') * cellSize
             fillStyle = cell.get('color')
             
-            #@drawingContext.strokeStyle = 'rgba(0,50,100,0.5)'
-            @drawingContext.strokeStyle = 'rgb(100,100,100)'
-            @drawingContext.strokeRect(x,y,cellSize, cellSize)
-            @drawingContext.fillStyle = fillStyle
-            @drawingContext.fillRect(x,y,cellSize,cellSize)
+            state = cell.get('state')
+            if state == 'alive'
+                #Multiple alive sprites
+                if Math.random() < 0.5
+                    state = 'alive2'
+            #Image
+            @drawingContext.clearRect(x,y,cellSize,cellSize)
+            #draw grass first
+            @drawingContext.drawImage(@img.dead, x, y, cellSize, cellSize)
+            @drawingContext.drawImage(@img[state], x, y, cellSize, cellSize)
+            ##Rect
+            ##@drawingContext.strokeStyle = 'rgba(0,50,100,0.5)'
+            #@drawingContext.strokeStyle = 'rgb(100,100,100)'
+            #@drawingContext.strokeRect(x,y,cellSize, cellSize)
+            #@drawingContext.fillStyle = fillStyle
+            #@drawingContext.fillRect(x,y,cellSize,cellSize)
 
             return @
 
@@ -168,7 +195,7 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
                     health = health - (Math.random() * neighbors.alive)
 
                 if neighbors.alive < 1
-                    health = health - 10
+                    health = health - 1
 
                 if health < 0
                     state = 'dead'
@@ -180,13 +207,13 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
                 if neighbors.zombie
                     health = health - (neighbors.zombie * neighbors.zombie)
                     #Chance to get bit and turned to zombie
-                    if Math.random() < (0.0 + (neighbors.zombie / 8))
+                    if Math.random() < (0.027 + (neighbors.zombie / 8))
                         state = 'zombie'
 
                 #If there's too many humans, resources are scarce and they
                 #  die / turn to zombie / but people kill zombie
                 if neighbors.alive > 6
-                    if Math.random() < 0.5
+                    if Math.random() < 0.8
                         state = 'zombie'
 
                 if neighbors.resource > 0
@@ -196,7 +223,7 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
                 resources = resources - 20 - (neighbors.alive * 2)
 
                 #update health if we're still alive
-                health = health + (resources / 5.0)
+                health = health + (resources / 2.0)
 
                 if health < 0
                     if neighbors.zombie >= neighbors.alive
@@ -225,14 +252,17 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
             #----------------------------
             else if cell.get('state') == 'dead'
                 if neighbors.alive > ( Math.max(neighbors.zombie, 1) )
-                    if Math.random() < 0.01 + (neighbors.alive / 60)
+                    if Math.random() < 0.007 + (neighbors.alive / 60)
                         #chance for birth
                         state = 'alive'
                 else
                     if Math.random() < @model.get('resourceProbability')
                         state = 'resource'
                     else
-                        state = 'dead'
+                        if Math.random() < 0.03
+                            state = 'zombie'
+                        else
+                            state = 'dead'
                 
             #Set updated cell
             #----------------------------

@@ -15,7 +15,22 @@
       }
 
       World.prototype.initialize = function() {
+        var _this = this;
         this.canvas = null;
+        this.img = {};
+        this.img.zombie = new Image();
+        this.img.zombie.src = '/static/img/zombie.png';
+        this.img.alive = new Image();
+        this.img.alive.src = '/static/img/alive.png';
+        this.img.alive2 = new Image();
+        this.img.alive2.src = '/static/img/alive2.png';
+        this.img.resource = new Image();
+        this.img.resource.src = '/static/img/resource.png';
+        this.img.dead = new Image();
+        this.img.dead.src = '/static/img/dead.png';
+        this.img.dead.onload = function() {
+          return _this.render();
+        };
         return this;
       };
 
@@ -121,15 +136,16 @@
       };
 
       World.prototype.drawCell = function(cell) {
-        var cellSize, fillStyle, x, y;
+        var cellSize, fillStyle, state, x, y;
         cellSize = this.model.get('cellSize');
         x = cell.get('column') * cellSize;
         y = cell.get('row') * cellSize;
         fillStyle = cell.get('color');
-        this.drawingContext.strokeStyle = 'rgb(100,100,100)';
-        this.drawingContext.strokeRect(x, y, cellSize, cellSize);
-        this.drawingContext.fillStyle = fillStyle;
-        this.drawingContext.fillRect(x, y, cellSize, cellSize);
+        state = cell.get('state');
+        if (state === 'alive') if (Math.random() < 0.5) state = 'alive2';
+        this.drawingContext.clearRect(x, y, cellSize, cellSize);
+        this.drawingContext.drawImage(this.img.dead, x, y, cellSize, cellSize);
+        this.drawingContext.drawImage(this.img[state], x, y, cellSize, cellSize);
         return this;
       };
 
@@ -154,19 +170,19 @@
           } else if (neighbors.alive > 0) {
             health = health - (Math.random() * neighbors.alive);
           }
-          if (neighbors.alive < 1) health = health - 10;
+          if (neighbors.alive < 1) health = health - 1;
           if (health < 0) state = 'dead';
         } else if (cell.get('state') === 'alive') {
           if (neighbors.zombie) {
             health = health - (neighbors.zombie * neighbors.zombie);
-            if (Math.random() < (0.0 + (neighbors.zombie / 8))) state = 'zombie';
+            if (Math.random() < (0.027 + (neighbors.zombie / 8))) state = 'zombie';
           }
-          if (neighbors.alive > 6) if (Math.random() < 0.5) state = 'zombie';
+          if (neighbors.alive > 6) if (Math.random() < 0.8) state = 'zombie';
           if (neighbors.resource > 0) {
             resources = resources + (25 * neighbors.resource);
           }
           resources = resources - 20 - (neighbors.alive * 2);
-          health = health + (resources / 5.0);
+          health = health + (resources / 2.0);
           if (health < 0) {
             if (neighbors.zombie >= neighbors.alive) {
               state = 'zombie';
@@ -182,12 +198,16 @@
           if (resources < 0) state = 'dead';
         } else if (cell.get('state') === 'dead') {
           if (neighbors.alive > (Math.max(neighbors.zombie, 1))) {
-            if (Math.random() < 0.01 + (neighbors.alive / 60)) state = 'alive';
+            if (Math.random() < 0.007 + (neighbors.alive / 60)) state = 'alive';
           } else {
             if (Math.random() < this.model.get('resourceProbability')) {
               state = 'resource';
             } else {
-              state = 'dead';
+              if (Math.random() < 0.03) {
+                state = 'zombie';
+              } else {
+                state = 'dead';
+              }
             }
           }
         }
