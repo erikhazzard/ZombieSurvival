@@ -11,6 +11,7 @@ define(["lib/backbone"], (Backbone)->
             color: 'rgba(100,150,200,0.8)'
             #state can be 
             #  alive, dead, or zombie
+            resources: 5
             state: 'alive'
             health: 100
         }
@@ -25,6 +26,8 @@ define(["lib/backbone"], (Backbone)->
                     health = 40
                 else
                     health = 0
+
+                resources = 5
 
                 @set({ health: health })
             )

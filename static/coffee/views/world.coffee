@@ -135,6 +135,7 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
                 column: cell.get('column')
                 state: cell.get('state')
                 health: cell.get('health')
+                resources: cell.get('resources')
             })
             neighbors = @countNeighbors(cell)
 
@@ -150,6 +151,7 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
             #Previous state is maintained by default
             state = cell.get('state')
             health = cell.get('health')
+            resources = cell.get('resources')
 
             #----------------------------
             #ZOMBIES
@@ -158,11 +160,11 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
                 #If more zombies than humans, zombies eat human
                 if neighbors.zombie >= neighbors.alive
                     health = health + (neighbors.alive * 3.5)
-                else
+                else if neighbors.alive > 0
                     health = health - (neighbors.alive * 1.5)
 
                 if state == 'zombie'
-                    health = health - 5
+                    health = health - 2
 
                 if health < 0
                     state = 'dead'
@@ -176,19 +178,29 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
 
                 #If there's too many humans, resources are scarce and they
                 #  die / turn to zombie / but people kill zombie
-                if neighbors.human > 7
+                if neighbors.alive > 7
                     if Math.random() < 0.5
                         state = 'dead'
 
+                resources = resources - 1
+
                 #update health if we're still alive
-                if state == 'alive'
-                    health = health - 0.5
+                #if state == 'alive'
+                    #if resources > 0
+                        #health = health + 10
+                    #else
+                        #health = health - (resources / 5.0)
 
                 if health < 0
-                    if neighbors.alive < 5
-                        state = 'zombie'
+                    if neighbors.alive < 7
+                        if Math.random() < 0.6
+                            state = 'zombie'
                     else
                         state = 'dead'
+
+                if neighbors.zombie
+                    if Math.random() < 0.1
+                        state = 'zombie'
 
             #----------------------------
             #EMPTY
@@ -196,7 +208,7 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
             else if cell.get('state') == 'dead'
                 if neighbors.alive > neighbors.zombie
                     #chance for birth
-                    if Math.random() < (0.04 + (neighbors.alive / 20))
+                    if Math.random() < (0.02 + (neighbors.alive / 40))
                         state = 'alive'
                 else
                     state = 'dead'
@@ -206,6 +218,7 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
             evolvedCell.set({
                 state: state
                 health: health
+                resources: resources
                 color: cell.getColor( state )
             })
 
@@ -248,6 +261,7 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
                 alive: 0
                 dead: 0
                 zombie: 0
+                resource: 0
             }
 
             if @model.get('toroidal')

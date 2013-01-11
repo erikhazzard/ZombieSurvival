@@ -17,7 +17,7 @@ define(["lib/backbone", "events"], (Backbone, events)->
             numberOfRows: 40
             numberOfColumns: 40
             seedProbability: 0.08
-            zombieProbability: 0.03
+            zombieProbability: 0.04
             #Default - 23/3
             rules: {
                 stayAlive: [2,3],
