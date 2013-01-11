@@ -22,10 +22,11 @@
         tickLength: 100,
         generationNum: 0,
         cellSize: 12,
-        numberOfRows: 40,
-        numberOfColumns: 40,
+        numberOfRows: 30,
+        numberOfColumns: 30,
         seedProbability: 0.08,
-        zombieProbability: 0.04,
+        zombieProbability: 0.01,
+        resourceProbability: 0.0005,
         rules: {
           stayAlive: [2, 3],
           birth: [3]

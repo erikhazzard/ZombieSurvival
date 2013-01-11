@@ -15,25 +15,33 @@
       Cell.prototype.defaults = {
         isAlive: true,
         color: 'rgba(100,150,200,0.8)',
-        resources: 5,
+        resources: 50,
         state: 'alive',
         health: 100
       };
 
       Cell.prototype.initialize = function() {
+        if (this.get('state') === 'resource') {
+          this.set({
+            'resources': Math.max(100, Math.round(Math.random() * 1500))
+          });
+        }
         return this.on('change:state', function(state) {
           var health, resources;
           health = 0;
           if (state === 'alive') {
             health = 100;
           } else if (state === 'zombie') {
-            health = 40;
-          } else {
-            health = 0;
+            health = 50;
           }
-          resources = 5;
+          if (state = 'resource') {
+            resources = Math.max(100, Math.round(Math.random() * 1500));
+          } else {
+            resources = 10;
+          }
           return this.set({
-            health: health
+            health: health,
+            resources: resources
           });
         });
       };
@@ -43,6 +51,7 @@
         colors = {
           alive: "rgb(100,220,100)",
           dead: "rgb(125,125,125)",
+          resource: "rgb(125,175,225)",
           zombie: "rgb(220,100,100)"
         };
         return colors[state];

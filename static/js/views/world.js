@@ -93,8 +93,9 @@
         } else {
           state = 'dead';
         }
-        if (Math.random() < (this.model.get('zombieProbability') / 4)) {
-          state = 'zombie';
+        if (Math.random() < this.model.get('zombieProbability')) state = 'zombie';
+        if (Math.random() < this.model.get('resourceProbability')) {
+          state = 'resource';
         }
         return new Cell({
           state: state,
@@ -146,32 +147,48 @@
         health = cell.get('health');
         resources = cell.get('resources');
         if (cell.get('state') === 'zombie') {
-          if (neighbors.zombie >= neighbors.alive) {
-            health = health + (neighbors.alive * 3.5);
+          if (neighbors.zombie >= (neighbors.alive + 1)) {
+            if (neighbors.alive > 1) {
+              health = health + ((Math.random() * neighbors.alive) + 10);
+            }
           } else if (neighbors.alive > 0) {
-            health = health - (neighbors.alive * 1.5);
+            health = health - (Math.random() * neighbors.alive);
           }
-          if (state === 'zombie') health = health - 2;
+          if (neighbors.alive < 1) health = health - 10;
           if (health < 0) state = 'dead';
         } else if (cell.get('state') === 'alive') {
           if (neighbors.zombie) {
             health = health - (neighbors.zombie * neighbors.zombie);
+            if (Math.random() < (0.0 + (neighbors.zombie / 8))) state = 'zombie';
           }
-          if (neighbors.alive > 7) if (Math.random() < 0.5) state = 'dead';
-          resources = resources - 1;
+          if (neighbors.alive > 6) if (Math.random() < 0.5) state = 'zombie';
+          if (neighbors.resource > 0) {
+            resources = resources + (25 * neighbors.resource);
+          }
+          resources = resources - 20 - (neighbors.alive * 2);
+          health = health + (resources / 5.0);
           if (health < 0) {
-            if (neighbors.alive < 7) {
-              if (Math.random() < 0.6) state = 'zombie';
+            if (neighbors.zombie >= neighbors.alive) {
+              state = 'zombie';
+            } else if (neighbors.alive < 7) {
+              if (Math.random() < 0.5) state = 'zombie';
             } else {
               state = 'dead';
             }
           }
-          if (neighbors.zombie) if (Math.random() < 0.1) state = 'zombie';
+        } else if (cell.get('state') === 'resource') {
+          resources = resources - 5;
+          if (neighbors.alive > 0) resources = resources - (neighbors.alive * 2);
+          if (resources < 0) state = 'dead';
         } else if (cell.get('state') === 'dead') {
-          if (neighbors.alive > neighbors.zombie) {
-            if (Math.random() < (0.02 + (neighbors.alive / 40))) state = 'alive';
+          if (neighbors.alive > (Math.max(neighbors.zombie, 1))) {
+            if (Math.random() < 0.01 + (neighbors.alive / 60)) state = 'alive';
           } else {
-            state = 'dead';
+            if (Math.random() < this.model.get('resourceProbability')) {
+              state = 'resource';
+            } else {
+              state = 'dead';
+            }
           }
         }
         evolvedCell.set({
@@ -211,8 +228,9 @@
         neighbors = {
           alive: 0,
           dead: 0,
+          resource: 0,
           zombie: 0,
-          resource: 0
+          resourcesTotal: 0
         };
         if (this.model.get('toroidal')) {
           rowBot = cellRow - 1;
@@ -239,6 +257,7 @@
                 column = 0;
               }
               neighbors[this.model.get('currentCellGeneration')[row][column].get('state')] += 1;
+              neighbors.resourcesTotal += this.model.get('currentCellGeneration')[row][column].get('resources') || 0;
             }
           }
         } else {
@@ -246,6 +265,7 @@
             for (column = lowerColumnBound; lowerColumnBound <= upperColumnBound ? column <= upperColumnBound : column >= upperColumnBound; lowerColumnBound <= upperColumnBound ? column++ : column--) {
               if (row === cellRow && column === cellColumn) continue;
               neighbors[this.model.get('currentCellGeneration')[row][column].get('state')] += 1;
+              neighbors.resourcesTotal += this.model.get('currentCellGeneration')[row][column].get('resourcesTotal');
             }
           }
         }

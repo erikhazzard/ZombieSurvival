@@ -82,8 +82,11 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
                 state = 'dead'
 
             #Seed some zombies - TODO, should be player controlled?
-            if Math.random() < (@model.get('zombieProbability') / 4 )
+            if Math.random() < @model.get('zombieProbability') 
                 state = 'zombie'
+
+            if Math.random() < @model.get('resourceProbability')
+                state = 'resource'
 
             return new Cell({
                 state: state
@@ -158,13 +161,14 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
             #----------------------------
             if cell.get('state') == 'zombie'
                 #If more zombies than humans, zombies eat human
-                if neighbors.zombie >= neighbors.alive
-                    health = health + (neighbors.alive * 3.5)
+                if neighbors.zombie >= (neighbors.alive + 1)
+                    if neighbors.alive > 1
+                        health = health + ((Math.random() * neighbors.alive) + 10)
                 else if neighbors.alive > 0
-                    health = health - (neighbors.alive * 1.5)
+                    health = health - (Math.random() * neighbors.alive)
 
-                if state == 'zombie'
-                    health = health - 2
+                if neighbors.alive < 1
+                    health = health - 10
 
                 if health < 0
                     state = 'dead'
@@ -175,43 +179,60 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
             else if cell.get('state') == 'alive'
                 if neighbors.zombie
                     health = health - (neighbors.zombie * neighbors.zombie)
+                    #Chance to get bit and turned to zombie
+                    if Math.random() < (0.0 + (neighbors.zombie / 8))
+                        state = 'zombie'
 
                 #If there's too many humans, resources are scarce and they
                 #  die / turn to zombie / but people kill zombie
-                if neighbors.alive > 7
+                if neighbors.alive > 6
                     if Math.random() < 0.5
-                        state = 'dead'
+                        state = 'zombie'
 
-                resources = resources - 1
+                if neighbors.resource > 0
+                    resources = resources + (25 * neighbors.resource)
+
+                #Natural usage of resources
+                resources = resources - 20 - (neighbors.alive * 2)
 
                 #update health if we're still alive
-                #if state == 'alive'
-                    #if resources > 0
-                        #health = health + 10
-                    #else
-                        #health = health - (resources / 5.0)
+                health = health + (resources / 5.0)
 
                 if health < 0
-                    if neighbors.alive < 7
-                        if Math.random() < 0.6
+                    if neighbors.zombie >= neighbors.alive
+                        state = 'zombie'
+
+                    else if neighbors.alive < 7
+                        if Math.random() < 0.5
                             state = 'zombie'
                     else
                         state = 'dead'
 
-                if neighbors.zombie
-                    if Math.random() < 0.1
-                        state = 'zombie'
+            #----------------------------
+            #Resource
+            #----------------------------
+            else if cell.get('state') == 'resource'
+                resources = resources - 5
+
+                if neighbors.alive > 0
+                    resources = resources - (neighbors.alive * 2)
+
+                if resources < 0
+                    state = 'dead'
 
             #----------------------------
             #EMPTY
             #----------------------------
             else if cell.get('state') == 'dead'
-                if neighbors.alive > neighbors.zombie
-                    #chance for birth
-                    if Math.random() < (0.02 + (neighbors.alive / 40))
+                if neighbors.alive > ( Math.max(neighbors.zombie, 1) )
+                    if Math.random() < 0.01 + (neighbors.alive / 60)
+                        #chance for birth
                         state = 'alive'
                 else
-                    state = 'dead'
+                    if Math.random() < @model.get('resourceProbability')
+                        state = 'resource'
+                    else
+                        state = 'dead'
                 
             #Set updated cell
             #----------------------------
@@ -260,8 +281,9 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
             neighbors = {
                 alive: 0
                 dead: 0
-                zombie: 0
                 resource: 0
+                zombie: 0
+                resourcesTotal: 0
             }
 
             if @model.get('toroidal')
@@ -292,6 +314,7 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
                             column = 0
                         
                         neighbors[@model.get('currentCellGeneration')[row][column].get('state')] += 1
+                        neighbors.resourcesTotal += @model.get('currentCellGeneration')[row][column].get('resources') || 0
             else
                 #This is the simpler method, but it cuts off the edges
                 for row in [lowerRowBound..upperRowBound]
@@ -299,6 +322,7 @@ define(["lib/backbone", "models/cell"], (Backbone, Cell)->
                         #Skip itself
                         continue if row is cellRow and column is cellColumn
                         neighbors[@model.get('currentCellGeneration')[row][column].get('state')] += 1
+                        neighbors.resourcesTotal += @model.get('currentCellGeneration')[row][column].get('resourcesTotal')
 
             return neighbors
 
