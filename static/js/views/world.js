@@ -133,40 +133,43 @@
       };
 
       World.prototype.evolveCell = function(cell) {
-        var evolvedCell, health, neighbors, state;
+        var evolvedCell, health, neighbors, resources, state;
         evolvedCell = new Cell({
           row: cell.get('row'),
           column: cell.get('column'),
           state: cell.get('state'),
-          health: cell.get('health')
+          health: cell.get('health'),
+          resources: cell.get('resources')
         });
         neighbors = this.countNeighbors(cell);
         state = cell.get('state');
         health = cell.get('health');
+        resources = cell.get('resources');
         if (cell.get('state') === 'zombie') {
           if (neighbors.zombie >= neighbors.alive) {
             health = health + (neighbors.alive * 3.5);
-          } else {
+          } else if (neighbors.alive > 0) {
             health = health - (neighbors.alive * 1.5);
           }
-          if (state === 'zombie') health = health - 5;
+          if (state === 'zombie') health = health - 2;
           if (health < 0) state = 'dead';
         } else if (cell.get('state') === 'alive') {
           if (neighbors.zombie) {
             health = health - (neighbors.zombie * neighbors.zombie);
           }
-          if (neighbors.human > 7) if (Math.random() < 0.5) state = 'dead';
-          if (state === 'alive') health = health - 0.5;
+          if (neighbors.alive > 7) if (Math.random() < 0.5) state = 'dead';
+          resources = resources - 1;
           if (health < 0) {
-            if (neighbors.alive < 5) {
-              state = 'zombie';
+            if (neighbors.alive < 7) {
+              if (Math.random() < 0.6) state = 'zombie';
             } else {
               state = 'dead';
             }
           }
+          if (neighbors.zombie) if (Math.random() < 0.1) state = 'zombie';
         } else if (cell.get('state') === 'dead') {
           if (neighbors.alive > neighbors.zombie) {
-            if (Math.random() < (0.04 + (neighbors.alive / 20))) state = 'alive';
+            if (Math.random() < (0.02 + (neighbors.alive / 40))) state = 'alive';
           } else {
             state = 'dead';
           }
@@ -174,6 +177,7 @@
         evolvedCell.set({
           state: state,
           health: health,
+          resources: resources,
           color: cell.getColor(state)
         });
         return evolvedCell;
@@ -207,7 +211,8 @@
         neighbors = {
           alive: 0,
           dead: 0,
-          zombie: 0
+          zombie: 0,
+          resource: 0
         };
         if (this.model.get('toroidal')) {
           rowBot = cellRow - 1;

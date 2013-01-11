@@ -15,13 +15,14 @@
       Cell.prototype.defaults = {
         isAlive: true,
         color: 'rgba(100,150,200,0.8)',
+        resources: 5,
         state: 'alive',
         health: 100
       };
 
       Cell.prototype.initialize = function() {
         return this.on('change:state', function(state) {
-          var health;
+          var health, resources;
           health = 0;
           if (state === 'alive') {
             health = 100;
@@ -30,6 +31,7 @@
           } else {
             health = 0;
           }
+          resources = 5;
           return this.set({
             health: health
           });

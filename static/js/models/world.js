@@ -25,7 +25,7 @@
         numberOfRows: 40,
         numberOfColumns: 40,
         seedProbability: 0.08,
-        zombieProbability: 0.03,
+        zombieProbability: 0.04,
         rules: {
           stayAlive: [2, 3],
           birth: [3]
